@@ -44,6 +44,7 @@ export class MemStorage implements IStorage {
   constructor() {
     this.users = new Map();
     this.messages = new Map();
+    this.ipTracking = new Map();
     this.currentUserId = 1;
     this.currentMessageId = 1;
     
@@ -59,7 +60,7 @@ export class MemStorage implements IStorage {
       email: "demo@coldcopy.com",
       stripeCustomerId: null,
       stripeSubscriptionId: null,
-      plan: "free",
+      plan: "trial",
       messagesUsedThisMonth: 0, // Production ready - start fresh
       subscriptionStatus: "active",
       currentPeriodEnd: null,
@@ -79,6 +80,12 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.email === email,
+    );
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
     const user: User = { 
@@ -87,7 +94,7 @@ export class MemStorage implements IStorage {
       email: null,
       stripeCustomerId: null,
       stripeSubscriptionId: null,
-      plan: "free",
+      plan: "trial",
       messagesUsedThisMonth: 0,
       subscriptionStatus: "active",
       currentPeriodEnd: null,
@@ -97,7 +104,7 @@ export class MemStorage implements IStorage {
     return user;
   }
 
-  async createMessage(insertMessage: InsertMessage): Promise<Message> {
+  async createMessage(insertMessage: InsertMessage & { userId?: number; ipAddress?: string }): Promise<Message> {
     const id = this.currentMessageId++;
     const message: Message = { 
       ...insertMessage,
@@ -107,6 +114,8 @@ export class MemStorage implements IStorage {
       personalizationScore: insertMessage.personalizationScore || null,
       wordCount: insertMessage.wordCount || null,
       estimatedResponseRate: insertMessage.estimatedResponseRate || null,
+      userId: insertMessage.userId || null,
+      ipAddress: insertMessage.ipAddress || null,
       id,
       createdAt: new Date()
     };
