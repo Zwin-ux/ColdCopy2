@@ -72,24 +72,8 @@ export default function Auth() {
       
       // Handle special redirect for upgrade flow
       if (action === 'upgrade' && plan) {
-        // Redirect to checkout after successful login
-        setTimeout(() => {
-          fetch("/api/create-checkout-session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ plan })
-          })
-          .then(res => res.json())
-          .then(data => {
-            if (data.url) {
-              window.location.href = data.url;
-            }
-          })
-          .catch(() => {
-            window.location.href = "/pricing";
-          });
-        }, 500);
+        // Go back to pricing page with upgrade intent
+        window.location.href = `/pricing?upgrade=${plan}`;
       } else {
         window.location.href = redirectUrl;
       }
@@ -114,24 +98,8 @@ export default function Auth() {
       
       // Handle special redirect for upgrade flow
       if (action === 'upgrade' && plan) {
-        // Redirect to checkout after successful registration
-        setTimeout(() => {
-          fetch("/api/create-checkout-session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ plan })
-          })
-          .then(res => res.json())
-          .then(data => {
-            if (data.url) {
-              window.location.href = data.url;
-            }
-          })
-          .catch(() => {
-            window.location.href = "/pricing";
-          });
-        }, 500);
+        // Go back to pricing page with upgrade intent
+        window.location.href = `/pricing?upgrade=${plan}`;
       } else {
         window.location.href = redirectUrl;
       }
