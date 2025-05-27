@@ -145,67 +145,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Construct prompt for OpenAI
-      let prompt = "You are an expert at writing personalized outreach messages. Create a professional, personalized outreach message based on the following information:\n\n";
+      // Generate message using smart template system
+      const { templateId, recipientName, recipientCompany, recipientRole } = req.body;
       
-      if (validatedInput.linkedinUrl) {
-        prompt += `LinkedIn Profile: ${validatedInput.linkedinUrl}\n`;
-      }
-      
-      if (validatedInput.bioText) {
-        prompt += `Additional Context/Bio: ${validatedInput.bioText}\n`;
-      }
-      
-      if (validatedInput.resumeContent) {
-        prompt += `Sender's Background (Resume): ${validatedInput.resumeContent.substring(0, 1000)}\n`;
-      }
-
-      prompt += `\nPlease generate a personalized outreach message that:
-1. Is professional and authentic
-2. References specific details from the provided information
-3. Is concise (100-150 words)
-4. Has a clear call to action
-5. Feels personal, not templated
-
-Return the response in JSON format with the following structure:
-{
-  "message": "the generated message text",
-  "personalizationScore": number between 1-100,
-  "wordCount": number of words in the message,
-  "estimatedResponseRate": estimated response rate percentage 1-100
-}`;
-
-      // Call OpenAI API
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        messages: [
-          { role: "system", content: "You are an expert outreach message writer." },
-          { role: "user", content: prompt }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.7,
-        max_tokens: 1000
+      const generatedMessage = generateTemplateMessage({
+        linkedinUrl: validatedInput.linkedinUrl,
+        bioText: validatedInput.bioText,
+        templateId: templateId || 'professional_intro',
+        recipientName: recipientName || extractNameFromLinkedIn(validatedInput.linkedinUrl),
+        recipientCompany: recipientCompany || extractCompanyFromBio(validatedInput.bioText),
+        recipientRole: recipientRole || extractRoleFromBio(validatedInput.bioText),
+        resume: validatedInput.resumeContent
       });
-
-      const result = JSON.parse(response.choices[0].message.content || '{}');
-      
-      // Validate the AI response structure
-      const aiResponse = z.object({
-        message: z.string(),
-        personalizationScore: z.number().min(1).max(100),
-        wordCount: z.number().min(1),
-        estimatedResponseRate: z.number().min(1).max(100)
-      }).parse(result);
 
       // Store the generated message
       const messageRecord = await storage.createMessage({
         linkedinUrl: validatedInput.linkedinUrl,
         bioText: validatedInput.bioText,
         resumeContent: validatedInput.resumeContent,
-        generatedMessage: aiResponse.message,
-        personalizationScore: aiResponse.personalizationScore,
-        wordCount: aiResponse.wordCount,
-        estimatedResponseRate: aiResponse.estimatedResponseRate
+        generatedMessage: generatedMessage.message,
+        personalizationScore: generatedMessage.personalizationScore,
+        wordCount: generatedMessage.wordCount,
+        estimatedResponseRate: generatedMessage.estimatedResponseRate
       });
 
       // Increment user's message usage count
@@ -217,10 +178,11 @@ Return the response in JSON format with the following structure:
 
       res.json({
         id: messageRecord.id,
-        message: aiResponse.message,
-        personalizationScore: aiResponse.personalizationScore,
-        wordCount: aiResponse.wordCount,
-        estimatedResponseRate: aiResponse.estimatedResponseRate,
+        message: generatedMessage.message,
+        personalizationScore: generatedMessage.personalizationScore,
+        wordCount: generatedMessage.wordCount,
+        estimatedResponseRate: generatedMessage.estimatedResponseRate,
+        templateUsed: generatedMessage.templateName,
         usage: {
           used: updatedUser?.messagesUsedThisMonth || 0,
           limit: userPlan.messagesPerMonth,
@@ -245,7 +207,7 @@ Return the response in JSON format with the following structure:
       }
 
       res.status(500).json({ 
-        message: "Failed to generate message. Please check your OpenAI API key and try again." 
+        message: "Failed to generate message. Please try again with different inputs." 
       });
     }
   });

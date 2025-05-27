@@ -139,10 +139,10 @@ export default function Home() {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
               <h2 className="text-4xl lg:text-5xl font-bold text-primary leading-tight">
-                AI-Powered Outreach Messages
+                Smart Outreach Message Generator
               </h2>
               <p className="text-lg text-muted-foreground leading-relaxed">
-                Transform LinkedIn profiles and bios into personalized outreach messages that get responses. Simple, fast, effective.
+                Transform LinkedIn profiles and bios into personalized outreach messages using proven templates. Simple, fast, effective.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button size="lg" onClick={() => window.location.href = '/pricing'}>Start Free</Button>
@@ -412,8 +412,8 @@ export default function Home() {
               <div className="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
                 <Brain className="w-6 h-6 text-secondary" />
               </div>
-              <h4 className="text-lg font-semibold text-foreground mb-2">AI Personalization</h4>
-              <p className="text-muted-foreground">Generate tailored messages</p>
+              <h4 className="text-lg font-semibold text-foreground mb-2">Smart Templates</h4>
+              <p className="text-muted-foreground">Proven message templates</p>
             </div>
 
             <div className="text-center">

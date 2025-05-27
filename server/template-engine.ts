@@ -252,7 +252,7 @@ function generatePersonalConnection(bioText?: string, linkedinUrl?: string): str
 }
 
 function generateValueProposition(category: string): string {
-  const props = {
+  const props: Record<string, string> = {
     'Networking': 'I believe we could share valuable insights about our respective experiences in the industry.',
     'Career': 'I bring a unique combination of technical skills and business acumen to any team.',
     'Business': 'I think there could be interesting opportunities for our organizations to collaborate.',
