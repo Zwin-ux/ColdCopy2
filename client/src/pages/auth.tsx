@@ -129,8 +129,6 @@ export default function Auth() {
           </CardHeader>
 
           <CardContent>
-
-
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               {/* Login Tab */}
               <TabsContent value="login">
