@@ -86,24 +86,40 @@ export async function generatePersonalizedMessage(params: {
     // Validate and format the response
     let message = response.message || "Hi there,\n\nI'd love to connect and learn more about your experience.\n\nBest regards,\n[Your Name]";
     
-    // Production-ready anti-hallucination system for authentic personalization
-    const commonFakeNames = ['Alex', 'Sarah', 'John', 'Michael', 'Rachel', 'David', 'Lisa', 'Jennifer', 'Elon', 'Guillermo', 'Maria', 'Carlos', 'Ana', 'James', 'Emily', 'Robert', 'Jessica', 'Chris', 'Amanda', 'Matthew', 'Ashley', 'Daniel', 'Nicole', 'Andrew', 'Elizabeth', 'Ryan', 'Samantha', 'Kevin', 'Lauren', 'Brian', 'Stephanie', 'Amith', 'Kumar', 'Priya', 'Raj', 'Anita', 'Vikram', 'Sanya', 'Arjun', 'Neha', 'Rohan'];
+    // AGGRESSIVE ANTI-HALLUCINATION: Remove ALL fabricated content
     
-    // Remove any fake names the AI might have generated
-    for (const fakeName of commonFakeNames) {
-      const fakeGreeting = `Hi ${fakeName},`;
-      if (message.startsWith(fakeGreeting)) {
-        message = message.replace(fakeGreeting, 'Hi there,');
-        console.log(`🛡️ Data integrity maintained: Replaced fabricated name with authentic greeting`);
-        break;
-      }
+    // 1. Remove any sentence that introduces fake names or companies
+    const sentences = message.split('.');
+    const cleanSentences = sentences.filter(sentence => {
+      const cleaned = sentence.trim().toLowerCase();
+      return !cleaned.includes('my name is') && 
+             !cleaned.includes("i'm ") && 
+             !cleaned.includes('techcraft') &&
+             !cleaned.includes('publishing') &&
+             !cleaned.includes('labs') &&
+             !cleaned.includes('freelance') &&
+             !cleaned.includes('consultant');
+    });
+    
+    // 2. Rebuild message from clean sentences
+    message = cleanSentences.join('. ').trim();
+    
+    // 3. Replace placeholders with actual sender information
+    message = message.replace(/\[Platform\]/g, '');
+    message = message.replace(/\[specific project or technology\]/g, 'your work');
+    message = message.replace(/\[Your Name\]/g, params.senderName || 'a professional');
+    message = message.replace(/\[Your Company\]/g, params.senderCompany || 'my company');
+    message = message.replace(/\[Your Role\]/g, params.senderRole || 'my role');
+    
+    // 4. Clean up formatting and line breaks
+    message = message.replace(/\\r\\n/g, ' ').replace(/\s+/g, ' ').replace(/\s+\./g, '.').trim();
+    
+    // 5. Ensure it starts with proper greeting
+    if (!message.startsWith('Hi there')) {
+      message = 'Hi there, ' + message.replace(/^Hi there,?\s*/, '');
     }
     
-    // Replace placeholder names with professional greeting
-    if (message.startsWith('Hi [Name],')) {
-      message = message.replace('Hi [Name],', 'Hi there,');
-      console.log(`🛡️ Production greeting applied: Replaced placeholder with authentic salutation`);
-    }
+    console.log('🛡️ Aggressive anti-hallucination filter applied');
     
     const personalizationScore = Math.min(100, Math.max(60, response.personalizationScore || 75));
     const wordCount = message.split(/\s+/).length;
