@@ -79,6 +79,7 @@ const getCharCountColor = (count: number, max: number): string => {
 export default function Generate() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [generatedMessage, setGeneratedMessage] = useState<GenerateMessageResponse | null>(null);
+  const [detectedInfo, setDetectedInfo] = useState<string | null>(null);
   const [bioCharCount, setBioCharCount] = useState(0);
   const [messageCharCount, setMessageCharCount] = useState(0);
   const [lastError, setLastError] = useState<string | null>(null);
@@ -143,6 +144,11 @@ export default function Generate() {
         variant: "destructive",
       });
       return;
+    }
+
+    // Show detection indicator if LinkedIn URL is provided
+    if (data.linkedinUrl) {
+      setDetectedInfo("🔍 Analyzing LinkedIn profile...");
     }
 
     const requestData = {
@@ -250,6 +256,17 @@ export default function Generate() {
                         )}
                       />
                     </div>
+
+                    {/* Smart LinkedIn Detection Panel */}
+                    {detectedInfo && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center space-x-2 text-blue-700">
+                          <div className="animate-pulse">🔍</div>
+                          <span className="text-sm font-medium">Smart Detection Active</span>
+                        </div>
+                        <p className="text-blue-600 text-sm mt-1">{detectedInfo}</p>
+                      </div>
+                    )}
 
                     <div>
                       <label className="block text-sm font-medium mb-2">

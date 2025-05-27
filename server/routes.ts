@@ -5,6 +5,7 @@ import bcrypt from "bcrypt";
 import Stripe from "stripe";
 import { storage } from "./storage";
 import { generatePersonalizedMessage } from "./groq-engine";
+import { scrapeLinkedInProfile, generateEnhancedBio } from "./linkedin-scraper";
 import { insertUserSchema, insertMessageSchema, SUBSCRIPTION_PLANS } from "@shared/schema";
 import { sendWelcomeEmail, sendLoginNotification } from "./email-service";
 
@@ -198,19 +199,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Get user's plan to determine features
-        const userPlan = SUBSCRIPTION_PLANS[user.plan as keyof typeof SUBSCRIPTION_PLANS];
+        // Smart LinkedIn profile detection and enhancement
+        let enhancedBioText = bioText;
+        let extractedProfileData: any = null;
         
+        if (linkedinUrl) {
+          console.log('Attempting to scrape LinkedIn profile:', linkedinUrl);
+          extractedProfileData = await scrapeLinkedInProfile(linkedinUrl);
+          
+          if (extractedProfileData) {
+            console.log('Successfully extracted LinkedIn data:', extractedProfileData);
+            
+            // Generate enhanced bio text from scraped data
+            const scrapedBio = generateEnhancedBio(extractedProfileData);
+            
+            // Combine user-provided bio with scraped data
+            if (bioText) {
+              enhancedBioText = `${bioText}\n\nDetected Profile Info:\n${scrapedBio}`;
+            } else {
+              enhancedBioText = scrapedBio;
+            }
+            
+            console.log('Enhanced bio text:', enhancedBioText);
+          } else {
+            console.log('No profile data extracted from LinkedIn URL');
+          }
+        }
+
         const result = await generatePersonalizedMessage({
           linkedinUrl,
-          bioText,
+          bioText: enhancedBioText,
           templateId: style || 'professional',
           resume: resume || undefined,
-          // Pro tier gets advanced features
-          useAdvancedPersonalization: user.plan === 'pro' || user.plan === 'agency',
-          includeABTestingSuggestions: user.plan === 'pro' || user.plan === 'agency',
-          // Agency tier gets custom training
-          useCustomTraining: user.plan === 'agency'
+          recipientName: extractedProfileData?.name,
+          recipientCompany: extractedProfileData?.company,
+          recipientRole: extractedProfileData?.headline
         });
 
         await storage.createMessage({
