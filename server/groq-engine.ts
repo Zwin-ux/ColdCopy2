@@ -30,6 +30,10 @@ export async function generatePersonalizedMessage(params: {
   useAdvancedPersonalization?: boolean;
   includeABTestingSuggestions?: boolean;
   useCustomTraining?: boolean;
+  senderName?: string;
+  senderCompany?: string;
+  senderRole?: string;
+  purpose?: string;
 }): Promise<MessageGenerationResult> {
   const {
     linkedinUrl,
@@ -49,7 +53,11 @@ export async function generatePersonalizedMessage(params: {
     recipientName,
     recipientCompany,
     recipientRole,
-    resume
+    resume,
+    senderName: params.senderName,
+    senderCompany: params.senderCompany,
+    senderRole: params.senderRole,
+    purpose: params.purpose
   });
 
   try {
@@ -105,6 +113,10 @@ function createPersonalizationPrompt(params: {
   recipientCompany?: string;
   recipientRole?: string;
   resume?: string;
+  senderName?: string;
+  senderCompany?: string;
+  senderRole?: string;
+  purpose?: string;
 }): string {
   const {
     linkedinUrl,
@@ -118,6 +130,13 @@ function createPersonalizationPrompt(params: {
 
   let prompt = `Create a highly personalized professional outreach message based on the following information:\n\n`;
 
+  // Add SENDER information (prevents AI hallucination)
+  if (params.senderName) prompt += `Your Name: ${params.senderName}\n`;
+  if (params.senderCompany) prompt += `Your Company: ${params.senderCompany}\n`;
+  if (params.senderRole) prompt += `Your Role: ${params.senderRole}\n`;
+  if (params.purpose) prompt += `Message Purpose: ${params.purpose}\n`;
+  
+  prompt += `\n--- RECIPIENT INFORMATION ---\n`;
   // Add recipient information
   if (recipientName) prompt += `Recipient Name: ${recipientName}\n`;
   if (recipientCompany) prompt += `Company: ${recipientCompany}\n`;

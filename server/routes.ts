@@ -233,7 +233,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           resume: resume || undefined,
           recipientName: extractedProfileData?.name,
           recipientCompany: extractedProfileData?.company,
-          recipientRole: extractedProfileData?.headline
+          recipientRole: extractedProfileData?.headline,
+          senderName: req.body.senderName,
+          senderCompany: req.body.senderCompany,
+          senderRole: req.body.senderRole,
+          purpose: req.body.purpose
         });
 
         await storage.createMessage({
