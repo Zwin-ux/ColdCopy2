@@ -254,7 +254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Generate message route
+  // Generate message route with comprehensive flow logic
   app.post("/api/messages/generate", upload.single('resume'), async (req, res) => {
     try {
       // Parse form data
@@ -269,61 +269,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Handle resume file
-      let resumeContent = null;
-      if (req.file) {
-        resumeContent = req.file.buffer.toString('utf-8');
-      }
-
-      // Check user authentication and limits
-      if (req.session.userId) {
-        // User is logged in - check their message limit
-        const user = await storage.getUser(req.session.userId);
-        if (!user) {
-          return res.status(401).json({ message: "User not found" });
-        }
-
-        const canGenerate = await storage.canUserGenerateMessage(user.id);
-        if (!canGenerate) {
-          const userPlan = SUBSCRIPTION_PLANS[user.plan as keyof typeof SUBSCRIPTION_PLANS];
-          return res.status(403).json({ 
-            message: `You've reached your monthly limit of ${userPlan.messagesPerMonth} messages. Please upgrade your plan to continue.`,
-            requiresUpgrade: true
+      // FLOW 1: Anonymous user (first message)
+      if (!req.session.userId) {
+        // Check if anonymous user has used their free message
+        const anonymousUsed = req.session.anonymousMessagesUsed || 0;
+        
+        if (anonymousUsed >= 1) {
+          return res.status(401).json({ 
+            message: "You've used your free message! Sign up to get 1 more free message.",
+            requiresLogin: true,
+            flow: "anonymous_limit_reached"
           });
         }
 
-        // Generate message
+        // Allow first anonymous message
+        req.session.anonymousMessagesUsed = anonymousUsed + 1;
+        
+        // Generate message for anonymous user
+        const resumeContent = req.file ? req.file.buffer.toString() : null;
         const result = await generatePersonalizedMessage({
           linkedinUrl,
           bioText,
-          templateId: style || "professional",
-          resume: resumeContent || undefined
+          style: style || 'professional',
+          resume: resumeContent
         });
 
-        // Save message and increment usage
-        await storage.createMessage({
-          generatedMessage: result.message,
+        const messageData = {
           linkedinUrl,
           bioText,
-          resumeContent: resumeContent || undefined,
+          style: style || 'professional',
+          message: result.message,
           personalizationScore: result.personalizationScore,
           wordCount: result.wordCount,
-          estimatedResponseRate: result.estimatedResponseRate
+          estimatedResponseRate: result.estimatedResponseRate,
+          isAnonymous: true
+        };
+
+        const message = await storage.createMessage(messageData);
+        return res.json({
+          id: message.id,
+          message: result.message,
+          personalizationScore: result.personalizationScore,
+          wordCount: result.wordCount,
+          estimatedResponseRate: result.estimatedResponseRate,
+          flow: "anonymous_first_message",
+          remainingMessages: 0
         });
+      }
 
-        await storage.incrementMessageUsage(user.id);
+      // FLOW 2: Authenticated user
+      const user = await storage.getUser(req.session.userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
 
-        const updatedUser = await storage.getUser(user.id);
-        const userPlan = SUBSCRIPTION_PLANS[updatedUser!.plan as keyof typeof SUBSCRIPTION_PLANS];
-
-        res.json({
-          ...result,
-          messagesUsed: updatedUser!.messagesUsedThisMonth,
-          messagesRemaining: userPlan.messagesPerMonth - updatedUser!.messagesUsedThisMonth
+      // FLOW 3: Check if user can generate messages (usage limits)
+      const canGenerate = await storage.canUserGenerateMessage(user.id);
+      if (!canGenerate) {
+        return res.status(403).json({
+          message: "You've reached your message limit. Upgrade to Pro for unlimited messages!",
+          requiresUpgrade: true,
+          flow: "usage_limit_reached",
+          redirectTo: "/pricing"
         });
-      } else {
-        // Anonymous user - allow only 1 free message, then require signup
-        // For simplicity, we'll use session to track anonymous usage
+      }
+
+      // Generate message for authenticated user
+      const result = await generatePersonalizedMessage({
+        linkedinUrl,
+        bioText,
+        style: style || 'professional',
+        resume: resumeContent
+      });
+
+      // Save message and increment usage
+      const messageData = {
+        linkedinUrl,
+        bioText,
+        style: style || 'professional',
+        message: result.message,
+        personalizationScore: result.personalizationScore,
+        wordCount: result.wordCount,
+        estimatedResponseRate: result.estimatedResponseRate,
+        userId: user.id
+      };
+
+      await storage.createMessage(messageData);
+      await storage.incrementMessageUsage(user.id);
+
+      const updatedUser = await storage.getUser(user.id);
+      const userPlan = SUBSCRIPTION_PLANS[updatedUser!.plan as keyof typeof SUBSCRIPTION_PLANS];
+
+      res.json({
+        id: messageData.linkedinUrl + Date.now(),
+        message: result.message,
+        personalizationScore: result.personalizationScore,
+        wordCount: result.wordCount,
+        estimatedResponseRate: result.estimatedResponseRate,
+        flow: "authenticated_user",
+        messagesUsed: updatedUser!.messagesUsedThisMonth,
+        messagesRemaining: userPlan.messagesPerMonth - updatedUser!.messagesUsedThisMonth
+      });
         const anonymousMessagesUsed = req.session.anonymousMessagesUsed || 0;
         
         if (anonymousMessagesUsed >= 1) {
