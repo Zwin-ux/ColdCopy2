@@ -208,8 +208,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await generatePersonalizedMessage({
           linkedinUrl,
           bioText,
-          style: style || "professional",
-          resume: resumeContent
+          templateId: style || "professional",
+          resume: resumeContent || undefined
         });
 
         // Save message and increment usage
@@ -217,7 +217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           generatedMessage: result.message,
           linkedinUrl,
           bioText,
-          resumeContent,
+          resumeContent: resumeContent || undefined,
           personalizationScore: result.personalizationScore,
           wordCount: result.wordCount,
           estimatedResponseRate: result.estimatedResponseRate
@@ -249,8 +249,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await generatePersonalizedMessage({
           linkedinUrl,
           bioText,
-          style: style || "professional",
-          resume: resumeContent
+          templateId: style || "professional",
+          resume: resumeContent || undefined
         });
 
         // Save message without user ID
@@ -258,7 +258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           generatedMessage: result.message,
           linkedinUrl,
           bioText,
-          resumeContent,
+          resumeContent: resumeContent || undefined,
           personalizationScore: result.personalizationScore,
           wordCount: result.wordCount,
           estimatedResponseRate: result.estimatedResponseRate
@@ -282,8 +282,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user subscription status
-  app.get("/api/user/subscription", requireAuth, async (req, res) => {
+  app.get("/api/user/subscription", async (req, res) => {
     try {
+      // For anonymous users, return trial status
+      if (!req.session?.userId) {
+        const anonymousMessagesUsed = req.session?.anonymousMessagesUsed || 0;
+        return res.json({
+          plan: "trial",
+          subscriptionStatus: "trial",
+          messagesUsed: anonymousMessagesUsed,
+          messagesLimit: 1,
+          messagesRemaining: Math.max(0, 1 - anonymousMessagesUsed),
+          currentPeriodEnd: null
+        });
+      }
+
       const user = await storage.getUser(req.session.userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
