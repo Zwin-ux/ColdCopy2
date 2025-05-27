@@ -6,10 +6,9 @@ if (process.env.SENDGRID_API_KEY) {
 }
 
 export async function sendWelcomeEmail(email: string, username: string) {
-  if (!process.env.SENDGRID_API_KEY) {
-    console.log('SendGrid not configured, skipping welcome email');
-    return;
-  }
+  // Email temporarily disabled until SendGrid sender verification is complete
+  console.log(`Welcome email would be sent to ${email} (${username})`);
+  return;
 
   try {
     await mailService.send({
@@ -67,10 +66,9 @@ export async function sendWelcomeEmail(email: string, username: string) {
 }
 
 export async function sendLoginNotification(email: string, username: string) {
-  if (!process.env.SENDGRID_API_KEY) {
-    console.log('SendGrid not configured, skipping login notification');
-    return;
-  }
+  // Email temporarily disabled until SendGrid sender verification is complete
+  console.log(`Login notification would be sent to ${email} (${username})`);
+  return;
 
   try {
     await mailService.send({

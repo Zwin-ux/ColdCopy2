@@ -167,8 +167,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         ],
         mode: 'payment',
-        success_url: `${req.headers.origin || 'http://localhost:5000'}/success`,
-        cancel_url: `${req.headers.origin || 'http://localhost:5000'}/cancel`,
+        success_url: `http://localhost:5000/success`,
+        cancel_url: `http://localhost:5000/cancel`,
       });
 
       res.json({ url: session.url });
