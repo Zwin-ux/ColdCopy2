@@ -185,6 +185,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Google OAuth route
+  app.get("/api/auth/google", (req, res) => {
+    // For now, redirect back to auth page with a message
+    // You can set up full Google OAuth when you provide the Google client credentials
+    res.redirect("/auth?message=google-setup-needed");
+  });
+
   // Logout route
   app.post("/api/logout", (req, res) => {
     req.session.destroy((err) => {

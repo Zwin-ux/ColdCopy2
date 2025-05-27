@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Mail, Lock, User, Eye, EyeOff } from "lucide-react";
-import { SiGoogle, SiApple } from "react-icons/si";
+import { SiGoogle } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -134,59 +134,12 @@ export default function Auth() {
               <Button 
                 variant="outline" 
                 className="w-full flex items-center justify-center gap-3 h-11"
-                onClick={async () => {
-                  try {
-                    const response = await fetch('/api/auth/google');
-                    if (!response.ok) {
-                      const data = await response.json();
-                      toast({
-                        title: "Google Sign-In",
-                        description: "Google sign-in will be available soon. Please use email registration for now.",
-                        variant: "default",
-                      });
-                    } else {
-                      window.location.href = '/api/auth/google';
-                    }
-                  } catch (error) {
-                    toast({
-                      title: "Google Sign-In",
-                      description: "Google sign-in will be available soon. Please use email registration for now.",
-                      variant: "default",
-                    });
-                  }
+                onClick={() => {
+                  window.location.href = '/api/auth/google';
                 }}
               >
                 <SiGoogle className="w-5 h-5 text-red-500" />
                 Continue with Google
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                className="w-full flex items-center justify-center gap-3 h-11"
-                onClick={async () => {
-                  try {
-                    const response = await fetch('/api/auth/apple');
-                    if (!response.ok) {
-                      const data = await response.json();
-                      toast({
-                        title: "Apple Sign-In",
-                        description: "Apple sign-in will be available soon. Please use email registration for now.",
-                        variant: "default",
-                      });
-                    } else {
-                      window.location.href = '/api/auth/apple';
-                    }
-                  } catch (error) {
-                    toast({
-                      title: "Apple Sign-In",
-                      description: "Apple sign-in will be available soon. Please use email registration for now.",
-                      variant: "default",
-                    });
-                  }
-                }}
-              >
-                <SiApple className="w-5 h-5 text-gray-900" />
-                Continue with Apple
               </Button>
             </div>
 
