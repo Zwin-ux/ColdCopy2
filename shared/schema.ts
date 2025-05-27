@@ -25,17 +25,6 @@ export const messages = pgTable("messages", {
   personalizationScore: integer("personalization_score"),
   wordCount: integer("word_count"),
   estimatedResponseRate: integer("estimated_response_rate"),
-  userId: integer("user_id"), // Nullable for anonymous users
-  ipAddress: text("ip_address"), // Track IP for abuse prevention
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// IP-based usage tracking for anonymous users
-export const ipUsageTracking = pgTable("ip_usage_tracking", {
-  id: serial("id").primaryKey(),
-  ipAddress: text("ip_address").notNull().unique(),
-  messagesUsed: integer("messages_used").notNull().default(0),
-  lastResetDate: timestamp("last_reset_date").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

@@ -1,4 +1,4 @@
-import { users, messages, ipUsageTracking, type User, type InsertUser, type Message, type InsertMessage, type Plan, SUBSCRIPTION_PLANS } from "@shared/schema";
+import { users, messages, type User, type InsertUser, type Message, type InsertMessage, type Plan, SUBSCRIPTION_PLANS } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql } from "drizzle-orm";
 
@@ -7,7 +7,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  createMessage(message: InsertMessage & { userId?: number; ipAddress?: string }): Promise<Message>;
+  createMessage(message: InsertMessage): Promise<Message>;
   getMessages(): Promise<Message[]>;
   getMessageById(id: number): Promise<Message | undefined>;
   
@@ -22,29 +22,17 @@ export interface IStorage {
   incrementMessageUsage(userId: number): Promise<User>;
   resetMonthlyUsage(userId: number): Promise<User>;
   canUserGenerateMessage(userId: number): Promise<boolean>;
-  
-  // IP-based trial tracking for anonymous users
-  getIpUsage(ipAddress: string): Promise<{ messagesUsed: number; canGenerate: boolean }>;
-  incrementIpUsage(ipAddress: string): Promise<void>;
-  checkTrialEligibility(userId?: number, ipAddress?: string): Promise<{
-    canGenerate: boolean;
-    messagesUsed: number;
-    requiresLogin: boolean;
-    requiresUpgrade: boolean;
-  }>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private messages: Map<number, Message>;
-  private ipTracking: Map<string, { messagesUsed: number; lastResetDate: Date }>;
   private currentUserId: number;
   private currentMessageId: number;
 
   constructor() {
     this.users = new Map();
     this.messages = new Map();
-    this.ipTracking = new Map();
     this.currentUserId = 1;
     this.currentMessageId = 1;
     
@@ -56,18 +44,17 @@ export class MemStorage implements IStorage {
     const demoUser: User = {
       id: 1,
       username: "demo",
-      password: "demo",
-      email: "demo@coldcopy.com",
+      email: "demo@example.com",
+      password: "$2b$10$K7L.z9QXQ9QZQK.x4x9Qhu",
+      plan: "trial",
+      messagesUsedThisMonth: 0,
+      subscriptionStatus: "active",
       stripeCustomerId: null,
       stripeSubscriptionId: null,
-      plan: "trial",
-      messagesUsedThisMonth: 0, // Production ready - start fresh
-      subscriptionStatus: "active",
       currentPeriodEnd: null,
       createdAt: new Date()
     };
     this.users.set(1, demoUser);
-    this.currentUserId = 2; // Next user will get ID 2
   }
 
   async getUser(id: number): Promise<User | undefined> {
@@ -75,28 +62,23 @@ export class MemStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    return Array.from(this.users.values()).find(user => user.username === username);
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.email === email,
-    );
+    return Array.from(this.users.values()).find(user => user.email === email);
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
     const user: User = { 
-      ...insertUser, 
+      ...insertUser,
       id,
-      email: null,
-      stripeCustomerId: null,
-      stripeSubscriptionId: null,
       plan: "trial",
       messagesUsedThisMonth: 0,
       subscriptionStatus: "active",
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
       currentPeriodEnd: null,
       createdAt: new Date()
     };
@@ -104,7 +86,7 @@ export class MemStorage implements IStorage {
     return user;
   }
 
-  async createMessage(insertMessage: InsertMessage & { userId?: number; ipAddress?: string }): Promise<Message> {
+  async createMessage(insertMessage: InsertMessage): Promise<Message> {
     const id = this.currentMessageId++;
     const message: Message = { 
       ...insertMessage,
@@ -114,8 +96,6 @@ export class MemStorage implements IStorage {
       personalizationScore: insertMessage.personalizationScore || null,
       wordCount: insertMessage.wordCount || null,
       estimatedResponseRate: insertMessage.estimatedResponseRate || null,
-      userId: insertMessage.userId || null,
-      ipAddress: insertMessage.ipAddress || null,
       id,
       createdAt: new Date()
     };
@@ -133,7 +113,6 @@ export class MemStorage implements IStorage {
     return this.messages.get(id);
   }
 
-  // Subscription management methods
   async updateUserSubscription(userId: number, data: {
     stripeCustomerId?: string;
     stripeSubscriptionId?: string;
@@ -145,7 +124,7 @@ export class MemStorage implements IStorage {
     if (!user) {
       throw new Error("User not found");
     }
-
+    
     const updatedUser: User = {
       ...user,
       ...data
@@ -160,7 +139,7 @@ export class MemStorage implements IStorage {
     if (!user) {
       throw new Error("User not found");
     }
-
+    
     const updatedUser: User = {
       ...user,
       messagesUsedThisMonth: user.messagesUsedThisMonth + 1
@@ -175,7 +154,7 @@ export class MemStorage implements IStorage {
     if (!user) {
       throw new Error("User not found");
     }
-
+    
     const updatedUser: User = {
       ...user,
       messagesUsedThisMonth: 0
@@ -186,109 +165,45 @@ export class MemStorage implements IStorage {
   }
 
   async canUserGenerateMessage(userId: number): Promise<boolean> {
-    const user = this.users.get(userId);
+    const user = await this.getUser(userId);
     if (!user) {
       return false;
     }
-
-    const { SUBSCRIPTION_PLANS } = await import("@shared/schema");
-    const userPlan = SUBSCRIPTION_PLANS[user.plan as Plan];
+    
+    const userPlan = SUBSCRIPTION_PLANS[user.plan as keyof typeof SUBSCRIPTION_PLANS];
+    if (!userPlan) {
+      return false;
+    }
     
     return user.messagesUsedThisMonth < userPlan.messagesPerMonth;
-  }
-
-  // IP-based trial tracking for anonymous users
-  async getIpUsage(ipAddress: string): Promise<{ messagesUsed: number; canGenerate: boolean }> {
-    const ipData = this.ipTracking.get(ipAddress);
-    if (!ipData) {
-      return { messagesUsed: 0, canGenerate: true };
-    }
-    
-    // Check if we need to reset monthly usage
-    const now = new Date();
-    const lastReset = ipData.lastResetDate;
-    const isNewMonth = now.getMonth() !== lastReset.getMonth() || now.getFullYear() !== lastReset.getFullYear();
-    
-    if (isNewMonth) {
-      ipData.messagesUsed = 0;
-      ipData.lastResetDate = now;
-    }
-    
-    return { 
-      messagesUsed: ipData.messagesUsed, 
-      canGenerate: ipData.messagesUsed < 1 // Only 1 free message for anonymous users
-    };
-  }
-
-  async incrementIpUsage(ipAddress: string): Promise<void> {
-    const existing = this.ipTracking.get(ipAddress);
-    if (existing) {
-      existing.messagesUsed++;
-    } else {
-      this.ipTracking.set(ipAddress, {
-        messagesUsed: 1,
-        lastResetDate: new Date()
-      });
-    }
-  }
-
-  async checkTrialEligibility(userId?: number, ipAddress?: string): Promise<{
-    canGenerate: boolean;
-    messagesUsed: number;
-    requiresLogin: boolean;
-    requiresUpgrade: boolean;
-  }> {
-    // If user is logged in, check their account status
-    if (userId) {
-      const user = await this.getUser(userId);
-      if (!user) {
-        return { canGenerate: false, messagesUsed: 0, requiresLogin: true, requiresUpgrade: false };
-      }
-
-      const plan = SUBSCRIPTION_PLANS[user.plan];
-      const canGenerate = user.messagesUsedThisMonth < plan.messagesPerMonth;
-      
-      return {
-        canGenerate,
-        messagesUsed: user.messagesUsedThisMonth,
-        requiresLogin: false,
-        requiresUpgrade: !canGenerate && user.plan === "trial"
-      };
-    }
-
-    // For anonymous users, check IP-based usage
-    if (ipAddress) {
-      const ipUsage = await this.getIpUsage(ipAddress);
-      return {
-        canGenerate: ipUsage.canGenerate,
-        messagesUsed: ipUsage.messagesUsed,
-        requiresLogin: !ipUsage.canGenerate, // After 1 message, require login
-        requiresUpgrade: false
-      };
-    }
-
-    return { canGenerate: false, messagesUsed: 0, requiresLogin: true, requiresUpgrade: false };
   }
 }
 
 export class DatabaseStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
-    if (!db) throw new Error('Database not available');
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    if (!db) throw new Error('Database not available');
     const [user] = await db.select().from(users).where(eq(users.username, username));
     return user || undefined;
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
-    if (!db) throw new Error('Database not available');
     const [user] = await db
       .insert(users)
-      .values(insertUser)
+      .values({
+        ...insertUser,
+        plan: "trial",
+        messagesUsedThisMonth: 0,
+        subscriptionStatus: "active"
+      })
       .returning();
     return user;
   }
@@ -302,7 +217,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMessages(): Promise<Message[]> {
-    return await db.select().from(messages).orderBy(messages.createdAt);
+    return await db.select().from(messages).orderBy(sql`${messages.createdAt} DESC`);
   }
 
   async getMessageById(id: number): Promise<Message | undefined> {
@@ -310,7 +225,6 @@ export class DatabaseStorage implements IStorage {
     return message || undefined;
   }
 
-  // Subscription management methods
   async updateUserSubscription(userId: number, data: {
     stripeCustomerId?: string;
     stripeSubscriptionId?: string;
@@ -327,15 +241,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async incrementMessageUsage(userId: number): Promise<User> {
-    // Get current user first, then increment
-    const currentUser = await this.getUser(userId);
-    if (!currentUser) throw new Error("User not found");
-    
     const [user] = await db
       .update(users)
-      .set({ 
-        messagesUsedThisMonth: currentUser.messagesUsedThisMonth + 1
-      })
+      .set({ messagesUsedThisMonth: sql`${users.messagesUsedThisMonth} + 1` })
       .where(eq(users.id, userId))
       .returning();
     return user;
@@ -355,13 +263,16 @@ export class DatabaseStorage implements IStorage {
     if (!user) {
       return false;
     }
-
-    const userPlan = SUBSCRIPTION_PLANS[user.plan as Plan];
+    
+    const userPlan = SUBSCRIPTION_PLANS[user.plan as keyof typeof SUBSCRIPTION_PLANS];
+    if (!userPlan) {
+      return false;
+    }
+    
     return user.messagesUsedThisMonth < userPlan.messagesPerMonth;
   }
 }
 
-// Smart storage that tries database first, falls back to memory
 class HybridStorage implements IStorage {
   private dbStorage: DatabaseStorage;
   private memStorage: MemStorage;
@@ -377,10 +288,11 @@ class HybridStorage implements IStorage {
     try {
       // Test database connection
       await this.dbStorage.getUser(1);
-      console.log("✅ Database connected successfully");
+      this.useDatabase = true;
+      console.log("[Storage] Using database storage");
     } catch (error) {
-      console.log("⚠️  Database unavailable, using in-memory storage");
       this.useDatabase = false;
+      console.log("[Storage] Database unavailable, using memory storage");
     }
   }
 
@@ -389,76 +301,31 @@ class HybridStorage implements IStorage {
   }
 
   async getUser(id: number): Promise<User | undefined> {
-    try {
-      return await this.getActiveStorage().getUser(id);
-    } catch (error) {
-      if (this.useDatabase) {
-        console.log("Database error, falling back to memory storage");
-        this.useDatabase = false;
-        return await this.memStorage.getUser(id);
-      }
-      throw error;
-    }
+    return this.getActiveStorage().getUser(id);
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    try {
-      return await this.getActiveStorage().getUserByUsername(username);
-    } catch (error) {
-      if (this.useDatabase) {
-        this.useDatabase = false;
-        return await this.memStorage.getUserByUsername(username);
-      }
-      throw error;
-    }
+    return this.getActiveStorage().getUserByUsername(username);
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return this.getActiveStorage().getUserByEmail(email);
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    try {
-      return await this.getActiveStorage().createUser(user);
-    } catch (error) {
-      if (this.useDatabase) {
-        this.useDatabase = false;
-        return await this.memStorage.createUser(user);
-      }
-      throw error;
-    }
+    return this.getActiveStorage().createUser(user);
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
-    try {
-      return await this.getActiveStorage().createMessage(message);
-    } catch (error) {
-      if (this.useDatabase) {
-        this.useDatabase = false;
-        return await this.memStorage.createMessage(message);
-      }
-      throw error;
-    }
+    return this.getActiveStorage().createMessage(message);
   }
 
   async getMessages(): Promise<Message[]> {
-    try {
-      return await this.getActiveStorage().getMessages();
-    } catch (error) {
-      if (this.useDatabase) {
-        this.useDatabase = false;
-        return await this.memStorage.getMessages();
-      }
-      throw error;
-    }
+    return this.getActiveStorage().getMessages();
   }
 
   async getMessageById(id: number): Promise<Message | undefined> {
-    try {
-      return await this.getActiveStorage().getMessageById(id);
-    } catch (error) {
-      if (this.useDatabase) {
-        this.useDatabase = false;
-        return await this.memStorage.getMessageById(id);
-      }
-      throw error;
-    }
+    return this.getActiveStorage().getMessageById(id);
   }
 
   async updateUserSubscription(userId: number, data: {
@@ -468,53 +335,20 @@ class HybridStorage implements IStorage {
     subscriptionStatus?: string;
     currentPeriodEnd?: Date;
   }): Promise<User> {
-    try {
-      return await this.getActiveStorage().updateUserSubscription(userId, data);
-    } catch (error) {
-      if (this.useDatabase) {
-        this.useDatabase = false;
-        return await this.memStorage.updateUserSubscription(userId, data);
-      }
-      throw error;
-    }
+    return this.getActiveStorage().updateUserSubscription(userId, data);
   }
 
   async incrementMessageUsage(userId: number): Promise<User> {
-    try {
-      return await this.getActiveStorage().incrementMessageUsage(userId);
-    } catch (error) {
-      if (this.useDatabase) {
-        this.useDatabase = false;
-        return await this.memStorage.incrementMessageUsage(userId);
-      }
-      throw error;
-    }
+    return this.getActiveStorage().incrementMessageUsage(userId);
   }
 
   async resetMonthlyUsage(userId: number): Promise<User> {
-    try {
-      return await this.getActiveStorage().resetMonthlyUsage(userId);
-    } catch (error) {
-      if (this.useDatabase) {
-        this.useDatabase = false;
-        return await this.memStorage.resetMonthlyUsage(userId);
-      }
-      throw error;
-    }
+    return this.getActiveStorage().resetMonthlyUsage(userId);
   }
 
   async canUserGenerateMessage(userId: number): Promise<boolean> {
-    try {
-      return await this.getActiveStorage().canUserGenerateMessage(userId);
-    } catch (error) {
-      if (this.useDatabase) {
-        this.useDatabase = false;
-        return await this.memStorage.canUserGenerateMessage(userId);
-      }
-      throw error;
-    }
+    return this.getActiveStorage().canUserGenerateMessage(userId);
   }
 }
 
-// Use memory storage for now to ensure app runs smoothly
 export const storage = new MemStorage();

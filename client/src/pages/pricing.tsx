@@ -158,15 +158,15 @@ export default function Pricing() {
               <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center mx-auto mb-4">
                 <Star className="w-6 h-6 text-muted-foreground" />
               </div>
-              <CardTitle className="text-2xl">{SUBSCRIPTION_PLANS.free.name}</CardTitle>
+              <CardTitle className="text-2xl">{SUBSCRIPTION_PLANS.trial.name}</CardTitle>
               <div className="text-4xl font-bold text-primary">
-                ${SUBSCRIPTION_PLANS.free.price}
+                ${SUBSCRIPTION_PLANS.trial.price}
                 <span className="text-base font-normal text-muted-foreground">/month</span>
               </div>
             </CardHeader>
             <CardContent>
               <ul className="space-y-3 mb-8">
-                {SUBSCRIPTION_PLANS.free.features.map((feature, index) => (
+                {SUBSCRIPTION_PLANS.trial.features.map((feature, index) => (
                   <li key={index} className="flex items-center space-x-3">
                     <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
                     <span className="text-sm">{feature}</span>
