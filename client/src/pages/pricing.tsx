@@ -39,6 +39,11 @@ export default function Pricing() {
       
       if (!response.ok) {
         const error = await response.json();
+        if (response.status === 401) {
+          // User not authenticated, redirect to login with return URL
+          window.location.href = `/auth?redirect=${encodeURIComponent('/pricing')}&action=upgrade&plan=${plan}`;
+          return;
+        }
         throw new Error(error.message || "Failed to create checkout session");
       }
       

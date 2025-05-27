@@ -36,6 +36,12 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
   const { toast } = useToast();
+  
+  // Get URL parameters for redirect handling
+  const urlParams = new URLSearchParams(window.location.search);
+  const redirectUrl = urlParams.get('redirect') || '/dashboard';
+  const action = urlParams.get('action');
+  const plan = urlParams.get('plan');
 
   const loginForm = useForm<LoginData>({
     resolver: zodResolver(loginSchema),
@@ -63,7 +69,30 @@ export default function Auth() {
         title: "Welcome back!",
         description: "You've successfully signed in.",
       });
-      window.location.href = "/dashboard";
+      
+      // Handle special redirect for upgrade flow
+      if (action === 'upgrade' && plan) {
+        // Redirect to checkout after successful login
+        setTimeout(() => {
+          fetch("/api/create-checkout-session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ plan })
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.url) {
+              window.location.href = data.url;
+            }
+          })
+          .catch(() => {
+            window.location.href = "/pricing";
+          });
+        }, 500);
+      } else {
+        window.location.href = redirectUrl;
+      }
     },
     onError: (error: any) => {
       toast({
@@ -82,7 +111,30 @@ export default function Auth() {
         title: "Account Created!",
         description: "Welcome to ColdCopy! You can now start generating messages.",
       });
-      window.location.href = "/dashboard";
+      
+      // Handle special redirect for upgrade flow
+      if (action === 'upgrade' && plan) {
+        // Redirect to checkout after successful registration
+        setTimeout(() => {
+          fetch("/api/create-checkout-session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ plan })
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.url) {
+              window.location.href = data.url;
+            }
+          })
+          .catch(() => {
+            window.location.href = "/pricing";
+          });
+        }, 500);
+      } else {
+        window.location.href = redirectUrl;
+      }
     },
     onError: (error: any) => {
       toast({
