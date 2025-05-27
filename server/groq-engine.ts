@@ -87,7 +87,7 @@ export async function generatePersonalizedMessage(params: {
     let message = response.message || "Hi there,\n\nI'd love to connect and learn more about your experience.\n\nBest regards,\n[Your Name]";
     
     // Post-process to remove fake names and ensure data integrity
-    const commonFakeNames = ['Alex', 'Sarah', 'John', 'Michael', 'Rachel', 'David', 'Lisa', 'Jennifer', 'Elon', 'Guillermo', 'Maria', 'Carlos', 'Ana', 'James', 'Emily', 'Robert', 'Jessica', 'Chris', 'Amanda', 'Matthew', 'Ashley', 'Daniel', 'Nicole', 'Andrew', 'Elizabeth', 'Ryan', 'Samantha', 'Kevin', 'Lauren', 'Brian', 'Stephanie'];
+    const commonFakeNames = ['Alex', 'Sarah', 'John', 'Michael', 'Rachel', 'David', 'Lisa', 'Jennifer', 'Elon', 'Guillermo', 'Maria', 'Carlos', 'Ana', 'James', 'Emily', 'Robert', 'Jessica', 'Chris', 'Amanda', 'Matthew', 'Ashley', 'Daniel', 'Nicole', 'Andrew', 'Elizabeth', 'Ryan', 'Samantha', 'Kevin', 'Lauren', 'Brian', 'Stephanie', 'Amith', 'Kumar', 'Priya', 'Raj', 'Anita', 'Vikram', 'Sanya', 'Arjun', 'Neha', 'Rohan'];
     
     for (const fakeName of commonFakeNames) {
       const fakeGreeting = `Hi ${fakeName},`;
