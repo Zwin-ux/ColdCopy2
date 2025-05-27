@@ -278,13 +278,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           estimatedResponseRate: result.estimatedResponseRate
         });
 
-        req.session.anonymousMessagesUsed = anonymousMessagesUsed + 1;
+        // No session tracking needed for unlimited demo access
 
         res.json({
           ...result,
-          messagesUsed: 1,
-          messagesRemaining: 0,
-          requiresLogin: true
+          messagesUsed: 0,
+          messagesRemaining: 999,
+          requiresLogin: false
         });
       }
     } catch (error: any) {

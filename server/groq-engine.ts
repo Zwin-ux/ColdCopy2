@@ -173,9 +173,9 @@ function extractResumeInfo(resume: string) {
   });
   
   return {
-    skills: [...new Set(skills)].slice(0, 5),
-    experience: [...new Set(experience)].slice(0, 3),
-    education: [...new Set(education)].slice(0, 2)
+    skills: Array.from(new Set(skills)).slice(0, 5),
+    experience: Array.from(new Set(experience)).slice(0, 3),
+    education: Array.from(new Set(education)).slice(0, 2)
   };
 }
 
@@ -196,5 +196,5 @@ function extractBioDetails(bioText: string) {
     if (text.includes(area)) details.push(area);
   });
   
-  return [...new Set(details)].slice(0, 4);
+  return Array.from(new Set(details)).slice(0, 4);
 }
