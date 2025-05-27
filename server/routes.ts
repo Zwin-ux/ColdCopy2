@@ -198,11 +198,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
+        // Get user's plan to determine features
+        const userPlan = SUBSCRIPTION_PLANS[user.plan as keyof typeof SUBSCRIPTION_PLANS];
+        
         const result = await generatePersonalizedMessage({
           linkedinUrl,
           bioText,
           templateId: style || 'professional',
-          resume: resume || undefined
+          resume: resume || undefined,
+          // Pro tier gets advanced features
+          useAdvancedPersonalization: user.plan === 'pro' || user.plan === 'agency',
+          includeABTestingSuggestions: user.plan === 'pro' || user.plan === 'agency',
+          // Agency tier gets custom training
+          useCustomTraining: user.plan === 'agency'
         });
 
         await storage.createMessage({

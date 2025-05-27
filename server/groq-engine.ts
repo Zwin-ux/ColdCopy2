@@ -27,6 +27,9 @@ export async function generatePersonalizedMessage(params: {
   recipientCompany?: string;
   recipientRole?: string;
   resume?: string;
+  useAdvancedPersonalization?: boolean;
+  includeABTestingSuggestions?: boolean;
+  useCustomTraining?: boolean;
 }): Promise<MessageGenerationResult> {
   const {
     linkedinUrl,
