@@ -191,13 +191,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(401).json({ message: "User not found" });
         }
 
-        const canGenerate = await storage.canUserGenerateMessage(user.id);
-        if (!canGenerate) {
-          return res.status(403).json({ 
-            message: "You've reached your message limit for this month. Upgrade to Pro for unlimited messages!",
-            redirectTo: "/pricing"
-          });
-        }
+        // PAYWALL TEMPORARILY DISABLED FOR DEBUGGING
+        // const canGenerate = await storage.canUserGenerateMessage(user.id);
+        // if (!canGenerate) {
+        //   return res.status(403).json({ 
+        //     message: "You've reached your message limit for this month. Upgrade to Pro for unlimited messages!",
+        //     redirectTo: "/pricing"
+        //   });
+        // }
 
         // Smart LinkedIn profile detection and enhancement
         let enhancedBioText = bioText;

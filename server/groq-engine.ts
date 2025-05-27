@@ -164,43 +164,84 @@ function createPersonalizationPrompt(params: {
     resume
   } = params;
 
-  let prompt = `Create a highly personalized professional outreach message based on the following information:\n\n`;
-
-  // Add SENDER information (prevents AI hallucination)
-  if (params.senderName) prompt += `Your Name: ${params.senderName}\n`;
-  if (params.senderCompany) prompt += `Your Company: ${params.senderCompany}\n`;
-  if (params.senderRole) prompt += `Your Role: ${params.senderRole}\n`;
-  if (params.purpose) prompt += `Message Purpose: ${params.purpose}\n`;
+  // Extract specific details from bio text for true personalization
+  const extractedDetails = extractPersonalizationPoints(bioText || '');
   
-  prompt += `\n--- RECIPIENT INFORMATION ---\n`;
-  // Add recipient information
-  if (recipientName) prompt += `Recipient Name: ${recipientName}\n`;
-  if (recipientCompany) prompt += `Company: ${recipientCompany}\n`;
-  if (recipientRole) prompt += `Role: ${recipientRole}\n`;
-  if (linkedinUrl) prompt += `LinkedIn: ${linkedinUrl}\n`;
-  if (bioText) prompt += `Bio/Description: ${bioText}\n`;
-  if (resume) prompt += `Sender's Background: ${resume.substring(0, 800)}\n`;
+  let prompt = `Create a highly personalized professional outreach message. Use ONLY the specific details provided below.\n\n`;
 
-  // Add template style guidance
-  const templateGuidance = getTemplateGuidance(templateId || 'professional_intro');
-  prompt += `\nMessage Style: ${templateGuidance}\n`;
+  // Add SENDER information 
+  prompt += `SENDER DETAILS:\n`;
+  prompt += `- Name: ${params.senderName || "[Your Name]"}\n`;
+  prompt += `- Company: ${params.senderCompany || "[Your Company]"}\n`;
+  prompt += `- Role: ${params.senderRole || "[Your Role]"}\n`;
+  if (params.purpose) prompt += `- Purpose: ${params.purpose}\n`;
+  
+  prompt += `\nRECIPIENT DETAILS:\n`;
+  if (recipientName) prompt += `- Name: ${recipientName}\n`;
+  if (recipientCompany) prompt += `- Company: ${recipientCompany}\n`;
+  if (recipientRole) prompt += `- Role: ${recipientRole}\n`;
+  if (bioText) prompt += `- Bio: ${bioText}\n`;
+  
+  // Add extracted personalization points
+  if (extractedDetails.length > 0) {
+    prompt += `\nKEY PERSONALIZATION POINTS:\n`;
+    extractedDetails.forEach((detail, index) => {
+      prompt += `${index + 1}. ${detail}\n`;
+    });
+  }
 
-  prompt += `\nPRODUCTION REQUIREMENTS FOR AUTHENTIC PERSONALIZATION:
-1. GREETING: Always start with "Hi there," - NEVER invent recipient names
-2. SENDER INFO: Your name: ${params.senderName || "[Your Name]"}, Company: ${params.senderCompany || "[Your Company]"}, Role: ${params.senderRole || "[Your Role]"}
-3. DATA INTEGRITY: Use ONLY real information from the provided bio - no fabricated details
-4. TONE: Professional yet conversational (100-150 words)
-5. CALL TO ACTION: Include clear but soft invitation to connect
-6. AUTHENTICITY: Build credibility through genuine interest in their actual work
+  prompt += `\nREQUIREMENTS:
+1. Start with "Hi there," (never invent recipient names)
+2. Reference specific details from the bio/role/company provided
+3. Show genuine interest in their actual work or achievements
+4. Include your authentic sender information naturally
+5. Professional but conversational tone (120-180 words)
+6. Clear call to action for connection
+7. NEVER make up companies, names, or details not provided
 
-Return JSON with:
+Return JSON format:
 {
-  "message": "the complete message text",
-  "personalizationScore": number between 70-95,
-  "estimatedResponseRate": number between 30-85
+  "message": "complete personalized message",
+  "personalizationScore": 85-95,
+  "estimatedResponseRate": 50-75
 }`;
 
   return prompt;
+}
+
+// Helper function to extract specific personalization points
+function extractPersonalizationPoints(bioText: string): string[] {
+  const points: string[] = [];
+  
+  if (!bioText) return points;
+  
+  const text = bioText.toLowerCase();
+  
+  // Extract companies
+  const companies = ['google', 'microsoft', 'apple', 'amazon', 'meta', 'netflix', 'tesla', 'spotify', 'adobe', 'salesforce', 'uber', 'airbnb', 'stripe', 'figma', 'linkedin', 'twitter', 'facebook', 'instagram', 'youtube', 'github', 'slack', 'zoom', 'dropbox', 'atlassian', 'shopify'];
+  companies.forEach(company => {
+    if (text.includes(company)) {
+      points.push(`Works at ${company.charAt(0).toUpperCase() + company.slice(1)}`);
+    }
+  });
+  
+  // Extract roles/titles
+  const roles = ['engineer', 'manager', 'director', 'ceo', 'cto', 'designer', 'developer', 'analyst', 'consultant', 'founder', 'vp', 'head of', 'lead', 'senior', 'principal', 'architect', 'specialist'];
+  roles.forEach(role => {
+    if (text.includes(role)) {
+      points.push(`Role involves ${role}`);
+    }
+  });
+  
+  // Extract technologies/skills
+  const techs = ['ai', 'machine learning', 'python', 'javascript', 'react', 'aws', 'cloud', 'data', 'analytics', 'mobile', 'web', 'backend', 'frontend', 'devops', 'security', 'blockchain', 'startup'];
+  techs.forEach(tech => {
+    if (text.includes(tech)) {
+      points.push(`Experience with ${tech}`);
+    }
+  });
+  
+  return [...new Set(points)].slice(0, 3); // Return unique points, max 3
 }
 
 function getTemplateGuidance(templateId: string): string {
