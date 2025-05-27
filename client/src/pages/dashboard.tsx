@@ -60,7 +60,7 @@ export default function Dashboard() {
 
         {/* Quick Actions - Only Working Routes */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Link href="/">
+          <Link href="/generate">
             <Card className="cursor-pointer hover:shadow-md transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-center space-x-4">
@@ -201,7 +201,7 @@ export default function Dashboard() {
             <p className="text-muted-foreground mb-6">
               Add a LinkedIn profile or bio text to get started
             </p>
-            <Link href="/">
+            <Link href="/generate">
               <Button size="lg">
                 <MessageSquare className="w-4 h-4 mr-2" />
                 Create Message
