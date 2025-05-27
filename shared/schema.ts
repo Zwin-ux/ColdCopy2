@@ -64,7 +64,7 @@ export const SUBSCRIPTION_PLANS = {
   },
   pro: {
     name: "Pro", 
-    price: 29,
+    price: 5,
     messagesPerMonth: 500,
     features: [
       "500 messages per month", 
@@ -75,8 +75,8 @@ export const SUBSCRIPTION_PLANS = {
     ]
   },
   agency: {
-    name: "Agency",
-    price: 99, 
+    name: "Ultimate",
+    price: 20, 
     messagesPerMonth: 5000,
     features: [
       "5,000 messages per month",
