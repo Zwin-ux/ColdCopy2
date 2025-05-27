@@ -10,6 +10,7 @@ export interface IStorage {
   createMessage(message: InsertMessage): Promise<Message>;
   getMessages(): Promise<Message[]>;
   getMessageById(id: number): Promise<Message | undefined>;
+  getUserMessages(userId: number): Promise<Message[]>;
   
   // Subscription management
   updateUserSubscription(userId: number, data: {
@@ -112,6 +113,10 @@ export class MemStorage implements IStorage {
 
   async getMessageById(id: number): Promise<Message | undefined> {
     return this.messages.get(id);
+  }
+
+  async getUserMessages(userId: number): Promise<Message[]> {
+    return Array.from(this.messages.values()).filter(m => m.userId === userId);
   }
 
   async updateUserSubscription(userId: number, data: {

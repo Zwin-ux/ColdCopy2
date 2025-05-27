@@ -18,6 +18,7 @@ export const users = pgTable("users", {
 
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
   linkedinUrl: text("linkedin_url"),
   bioText: text("bio_text"),
   resumeContent: text("resume_content"),
@@ -53,22 +54,24 @@ export const SUBSCRIPTION_PLANS = {
   trial: {
     name: "Free Trial",
     price: 0,
-    messagesPerMonth: 2, // 1 anonymous + 1 after login
-    features: ["2 free messages to try", "Experience full AI personalization", "No credit card required"]
+    messagesPerMonth: 2,
+    features: [
+      "2 free messages",
+      "AI-powered personalization", 
+      "LinkedIn profile analysis",
+      "No credit card required"
+    ]
   },
   pro: {
     name: "Pro", 
     price: 29,
     messagesPerMonth: 500,
     features: [
-      "500 personalized messages/month", 
-      "Advanced AI templates & personalization", 
-      "Resume & bio deep analysis", 
-      "A/B testing suggestions",
-      "Response rate tracking",
-      "Priority email support",
-      "Export to CSV/CRM",
-      "Message history & analytics"
+      "500 messages per month", 
+      "All free features",
+      "Message history & analytics",
+      "Export your messages",
+      "Priority support"
     ]
   },
   agency: {
@@ -76,16 +79,11 @@ export const SUBSCRIPTION_PLANS = {
     price: 99, 
     messagesPerMonth: 5000,
     features: [
-      "5,000 personalized messages/month",
-      "Custom AI training on your company data", 
-      "Team workspace & collaboration tools",
+      "5,000 messages per month",
+      "All Pro features",
+      "Unlimited message history",
       "Advanced analytics dashboard",
-      "API access for CRM integrations",
-      "White-label options",
-      "Dedicated account manager",
-      "Custom templates & workflows",
-      "Bulk import/export tools",
-      "Advanced reporting & insights"
+      "Priority support"
     ]
   }
 } as const;
