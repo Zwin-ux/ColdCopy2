@@ -48,7 +48,7 @@ export class MemStorage implements IStorage {
       stripeCustomerId: null,
       stripeSubscriptionId: null,
       plan: "free",
-      messagesUsedThisMonth: 3, // Start with some usage for demo
+      messagesUsedThisMonth: 0, // Production ready - start fresh
       subscriptionStatus: "active",
       currentPeriodEnd: null,
       createdAt: new Date()
