@@ -2,19 +2,12 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { generateMessageRequestSchema, insertMessageSchema, subscriptionSchema, SUBSCRIPTION_PLANS, type Plan } from "@shared/schema";
-import OpenAI from "openai";
+import { generateTemplateMessage, MESSAGE_TEMPLATES, extractNameFromLinkedIn, extractCompanyFromBio, extractRoleFromBio } from "./template-engine";
 import multer from "multer";
 import Stripe from "stripe";
 import { z } from "zod";
 
-// Initialize OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-if (!process.env.OPENAI_API_KEY) {
-  console.warn("OPENAI_API_KEY not found. Message generation will fail.");
-}
+// No AI dependencies - using smart template system instead
 
 // Initialize Stripe
 if (!process.env.STRIPE_SECRET_KEY) {
