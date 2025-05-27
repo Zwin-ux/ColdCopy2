@@ -9,6 +9,14 @@ import multer from "multer";
 import MemoryStore from "memorystore";
 import Stripe from "stripe";
 
+// Extend session data type
+declare module 'express-session' {
+  interface SessionData {
+    userId: number;
+    anonymousMessagesUsed: number;
+  }
+}
+
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Configure session
@@ -18,9 +26,7 @@ if (!process.env.STRIPE_SECRET_KEY) {
   console.warn("STRIPE_SECRET_KEY not found - payment functionality will be disabled");
 }
 
-const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16",
-}) : null;
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Session middleware

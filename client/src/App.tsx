@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/home-clean";
 import Auth from "@/pages/auth";
 import Pricing from "@/pages/pricing";
+import Checkout from "@/pages/checkout";
 import Success from "@/pages/success";
 import Cancel from "@/pages/cancel";
 import NotFound from "@/pages/not-found";
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/auth" component={Auth} />
       <Route path="/pricing" component={Pricing} />
+      <Route path="/checkout" component={Checkout} />
       <Route path="/success" component={Success} />
       <Route path="/cancel" component={Cancel} />
       <Route component={NotFound} />
