@@ -3,17 +3,17 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Mail, Link2, Brain, Copy, FileText, Users, Zap, Check, Star, ArrowRight, Menu, X, Crown } from "lucide-react";
+import { Mail, Link2, Brain, Copy, Users, Zap, Crown, Star, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { FileUpload } from "@/components/file-upload";
 import { generateMessage, copyToClipboard, type GenerateMessageResponse } from "@/lib/api";
+import mascotImage from "@assets/ChatGPT Image May 26, 2025, 07_58_42 PM.png";
 
 const formSchema = z.object({
   linkedinUrl: z.string().url("Please enter a valid LinkedIn URL").optional().or(z.literal("")),
@@ -160,12 +160,12 @@ export default function Home() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button size="lg" onClick={() => window.location.href = '/pricing'}>Start Free</Button>
-                <Button variant="outline" size="lg">View Pricing</Button>
+                <Button variant="outline" size="lg" onClick={() => window.location.href = '/pricing'}>View Pricing</Button>
               </div>
             </div>
             <div className="relative flex justify-center">
               <img 
-                src="@assets/ChatGPT Image May 26, 2025, 07_58_42 PM.png" 
+                src={mascotImage} 
                 alt="ColdCopy Mascot" 
                 className="w-80 h-80 object-contain" 
               />
@@ -176,7 +176,7 @@ export default function Home() {
 
       {/* Main Dashboard */}
       <section className="py-16 bg-background">
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="max-w-6xl mx-auto px-6">
           {/* Subscription Status Widget */}
           {subscription && (
             <div className="mb-8">
@@ -324,7 +324,7 @@ export default function Home() {
                       ) : (
                         <>
                           <Zap className="w-4 h-4 mr-2" />
-                          Generate Personalized Message
+                          Generate Message
                         </>
                       )}
                     </Button>
@@ -347,7 +347,7 @@ export default function Home() {
                       onClick={handleRegenerate}
                       disabled={generateMutation.isPending}
                     >
-                      <ArrowRight className="w-4 h-4 mr-2" />
+                      <Zap className="w-4 h-4 mr-2" />
                       Regenerate
                     </Button>
                     <Button 
@@ -424,313 +424,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-    </div>
-  );
-}
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center mb-4">
-                  <Zap className="w-6 h-6 text-secondary" />
-                </div>
-                <h4 className="text-lg font-semibold text-foreground mb-3">Company Context</h4>
-                <p className="text-muted-foreground leading-relaxed">
-                  Include company descriptions and recruiter bios for enhanced context and better personalization.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center mb-4">
-                  <ArrowRight className="w-6 h-6 text-secondary" />
-                </div>
-                <h4 className="text-lg font-semibold text-foreground mb-3">Response Rate Optimization</h4>
-                <p className="text-muted-foreground leading-relaxed">
-                  AI optimizes message structure and tone to maximize response rates based on proven patterns.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section className="py-16 bg-background" id="pricing">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-12">
-            <h3 className="text-3xl font-bold text-primary mb-4">Simple, Transparent Pricing</h3>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Choose the plan that fits your outreach needs
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {/* Free Plan */}
-            <Card>
-              <CardContent className="p-8">
-                <div className="text-center mb-6">
-                  <h4 className="text-xl font-semibold text-foreground mb-2">Free</h4>
-                  <div className="text-3xl font-bold text-foreground mb-1">$0</div>
-                  <p className="text-muted-foreground">per month</p>
-                </div>
-                
-                <ul className="space-y-3 mb-8">
-                  <li className="flex items-center space-x-3">
-                    <Check className="w-4 h-4 text-green-500" />
-                    <span className="text-muted-foreground">5 messages per month</span>
-                  </li>
-                  <li className="flex items-center space-x-3">
-                    <Check className="w-4 h-4 text-green-500" />
-                    <span className="text-muted-foreground">LinkedIn profile analysis</span>
-                  </li>
-                  <li className="flex items-center space-x-3">
-                    <Check className="w-4 h-4 text-green-500" />
-                    <span className="text-muted-foreground">Basic personalization</span>
-                  </li>
-                  <li className="flex items-center space-x-3">
-                    <Check className="w-4 h-4 text-green-500" />
-                    <span className="text-muted-foreground">Copy to clipboard</span>
-                  </li>
-                  <li className="flex items-center space-x-3 opacity-50">
-                    <X className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Resume integration</span>
-                  </li>
-                  <li className="flex items-center space-x-3 opacity-50">
-                    <X className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Advanced AI features</span>
-                  </li>
-                </ul>
-                
-                <Button variant="outline" className="w-full">Get Started Free</Button>
-              </CardContent>
-            </Card>
-
-            {/* Pro Plan */}
-            <Card className="border-2 border-secondary relative">
-              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-secondary text-white">Most Popular</Badge>
-              </div>
-              
-              <CardContent className="p-8">
-                <div className="text-center mb-6">
-                  <h4 className="text-xl font-semibold text-foreground mb-2">Pro</h4>
-                  <div className="text-3xl font-bold text-foreground mb-1">$29</div>
-                  <p className="text-muted-foreground">per month</p>
-                </div>
-                
-                <ul className="space-y-3 mb-8">
-                  <li className="flex items-center space-x-3">
-                    <Check className="w-4 h-4 text-green-500" />
-                    <span className="text-muted-foreground">Unlimited messages</span>
-                  </li>
-                  <li className="flex items-center space-x-3">
-                    <Check className="w-4 h-4 text-green-500" />
-                    <span className="text-muted-foreground">Advanced LinkedIn analysis</span>
-                  </li>
-                  <li className="flex items-center space-x-3">
-                    <Check className="w-4 h-4 text-green-500" />
-                    <span className="text-muted-foreground">Resume integration</span>
-                  </li>
-                  <li className="flex items-center space-x-3">
-                    <Check className="w-4 h-4 text-green-500" />
-                    <span className="text-muted-foreground">Company context analysis</span>
-                  </li>
-                  <li className="flex items-center space-x-3">
-                    <Check className="w-4 h-4 text-green-500" />
-                    <span className="text-muted-foreground">Advanced AI personalization</span>
-                  </li>
-                  <li className="flex items-center space-x-3">
-                    <Check className="w-4 h-4 text-green-500" />
-                    <span className="text-muted-foreground">Priority support</span>
-                  </li>
-                </ul>
-                
-                <Button className="w-full">Start Pro Trial</Button>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="text-center mt-8">
-            <p className="text-sm text-muted-foreground">
-              All plans include a 7-day free trial. No credit card required.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Social Proof Section */}
-      <section className="py-16 bg-card">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-12">
-            <h3 className="text-2xl font-bold text-primary mb-4">Trusted by Professionals Worldwide</h3>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center mb-4">
-                  <div className="flex text-yellow-400">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-current" />
-                    ))}
-                  </div>
-                </div>
-                <p className="text-muted-foreground mb-4 italic">
-                  "ColdCopy has transformed my networking approach. The AI-generated messages feel authentic and personal, resulting in a 3x higher response rate."
-                </p>
-                <div className="flex items-center space-x-3">
-                  <img 
-                    src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100" 
-                    alt="Michael Chen" 
-                    className="w-12 h-12 rounded-full object-cover" 
-                  />
-                  <div>
-                    <div className="font-medium text-foreground">Michael Chen</div>
-                    <div className="text-sm text-muted-foreground">Product Manager, TechStartup</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center mb-4">
-                  <div className="flex text-yellow-400">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-current" />
-                    ))}
-                  </div>
-                </div>
-                <p className="text-muted-foreground mb-4 italic">
-                  "As a recruiter, ColdCopy helps me craft compelling messages that candidates actually want to respond to. It's become an essential part of my workflow."
-                </p>
-                <div className="flex items-center space-x-3">
-                  <img 
-                    src="https://images.unsplash.com/photo-1494790108755-2616b612b577?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100" 
-                    alt="Sarah Williams" 
-                    className="w-12 h-12 rounded-full object-cover" 
-                  />
-                  <div>
-                    <div className="font-medium text-foreground">Sarah Williams</div>
-                    <div className="text-sm text-muted-foreground">Senior Recruiter, GlobalTech</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center mb-4">
-                  <div className="flex text-yellow-400">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-current" />
-                    ))}
-                  </div>
-                </div>
-                <p className="text-muted-foreground mb-4 italic">
-                  "The time I save with ColdCopy is incredible. What used to take me 30 minutes per message now takes 2 minutes, and the quality is consistently better."
-                </p>
-                <div className="flex items-center space-x-3">
-                  <img 
-                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100" 
-                    alt="David Rodriguez" 
-                    className="w-12 h-12 rounded-full object-cover" 
-                  />
-                  <div>
-                    <div className="font-medium text-foreground">David Rodriguez</div>
-                    <div className="text-sm text-muted-foreground">Sales Director, Enterprise Corp</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-16 bg-primary">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <h3 className="text-3xl font-bold text-primary-foreground mb-4">
-            Ready to Transform Your Outreach?
-          </h3>
-          <p className="text-xl text-blue-100 mb-8 leading-relaxed">
-            Join thousands of professionals using ColdCopy to create better connections and get more responses.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" variant="secondary">Start Free Trial</Button>
-            <Button size="lg" variant="outline" className="border-blue-200 text-primary-foreground hover:bg-primary-foreground hover:text-primary">
-              Schedule Demo
-            </Button>
-          </div>
-          <p className="text-sm text-blue-200 mt-4">
-            No credit card required • Setup in 2 minutes • Cancel anytime
-          </p>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-card border-t border-border py-12">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid md:grid-cols-4 gap-8">
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <Mail className="w-4 h-4 text-primary-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold text-primary">ColdCopy</h3>
-              </div>
-              <p className="text-muted-foreground">
-                AI-powered outreach messages that get responses.
-              </p>
-            </div>
-
-            <div>
-              <h4 className="font-semibold text-foreground mb-4">Product</h4>
-              <ul className="space-y-2">
-                <li><a href="#" className="text-muted-foreground hover:text-secondary transition-colors">Features</a></li>
-                <li><a href="#" className="text-muted-foreground hover:text-secondary transition-colors">Pricing</a></li>
-                <li><a href="#" className="text-muted-foreground hover:text-secondary transition-colors">API</a></li>
-                <li><a href="#" className="text-muted-foreground hover:text-secondary transition-colors">Chrome Extension</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-semibold text-foreground mb-4">Company</h4>
-              <ul className="space-y-2">
-                <li><a href="#" className="text-muted-foreground hover:text-secondary transition-colors">About</a></li>
-                <li><a href="#" className="text-muted-foreground hover:text-secondary transition-colors">Blog</a></li>
-                <li><a href="#" className="text-muted-foreground hover:text-secondary transition-colors">Careers</a></li>
-                <li><a href="#" className="text-muted-foreground hover:text-secondary transition-colors">Contact</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-semibold text-foreground mb-4">Support</h4>
-              <ul className="space-y-2">
-                <li><a href="#" className="text-muted-foreground hover:text-secondary transition-colors">Help Center</a></li>
-                <li><a href="#" className="text-muted-foreground hover:text-secondary transition-colors">Documentation</a></li>
-                <li><a href="#" className="text-muted-foreground hover:text-secondary transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="text-muted-foreground hover:text-secondary transition-colors">Terms of Service</a></li>
-              </ul>
-            </div>
-          </div>
-
-          <Separator className="my-8" />
-
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <p className="text-muted-foreground text-sm">
-              © 2024 ColdCopy. All rights reserved.
-            </p>
-            <div className="flex items-center space-x-6 mt-4 md:mt-0">
-              <a href="#" className="text-muted-foreground hover:text-secondary transition-colors text-sm">Privacy</a>
-              <a href="#" className="text-muted-foreground hover:text-secondary transition-colors text-sm">Terms</a>
-              <a href="#" className="text-muted-foreground hover:text-secondary transition-colors text-sm">Cookies</a>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
