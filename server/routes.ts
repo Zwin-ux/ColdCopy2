@@ -185,11 +185,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Google OAuth route
-  app.get("/api/auth/google", (req, res) => {
-    // For now, redirect back to auth page with a message
-    // You can set up full Google OAuth when you provide the Google client credentials
-    res.redirect("/auth?message=google-setup-needed");
+
+
+  // Create Stripe checkout session
+  app.post("/api/create-checkout-session", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      if (!stripe) {
+        return res.status(503).json({ message: "Payment processing temporarily unavailable" });
+      }
+
+      const { plan } = req.body;
+      
+      if (!plan || plan !== "pro") {
+        return res.status(400).json({ message: "Invalid plan selected" });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: 'ColdCopy Pro Plan',
+                description: 'Unlimited AI-powered personalized messages',
+              },
+              unit_amount: 500, // $5.00 in cents
+              recurring: {
+                interval: 'month',
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        mode: 'subscription',
+        success_url: `${req.protocol}://${req.get('host')}/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${req.protocol}://${req.get('host')}/cancel`,
+        customer_email: user.email || undefined,
+        metadata: {
+          userId: user.id.toString(),
+          plan: 'pro'
+        }
+      });
+
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("Checkout session error:", error);
+      res.status(500).json({ message: "Failed to create checkout session" });
+    }
   });
 
   // Logout route
