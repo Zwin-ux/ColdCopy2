@@ -125,24 +125,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(401).json({ error: "Not authenticated" });
     }
   });
-  // Generate personalized outreach message with usage tracking
+  // Generate personalized outreach message - supports trial flow with IP tracking
   app.post("/api/generate-message", upload.single('resume'), async (req, res) => {
     try {
       const { linkedinUrl, bioText } = req.body;
+      const userId = req.session?.userId; // Get from session if logged in
+      const ipAddress = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
       
-      // For demo purposes, simulate a logged-in user (in real app, get from session/auth)
-      const userId = 1; // In production, this would come from authentication
+      console.log('Generate message request - User:', userId, 'IP:', ipAddress);
+
+      // Check trial eligibility using your brilliant 2-message system
+      const eligibility = await storage.checkTrialEligibility(userId, ipAddress);
       
-      // Check if user can generate messages (usage limit)
-      const canGenerate = await storage.canUserGenerateMessage(userId);
-      if (!canGenerate) {
-        const user = await storage.getUser(userId);
-        const userPlan = SUBSCRIPTION_PLANS[user?.plan as Plan || 'free'];
+      if (!eligibility.canGenerate) {
+        if (eligibility.requiresLogin) {
+          return res.status(401).json({
+            message: "🎉 Free trial used! Create an account to get your second free message.",
+            requiresLogin: true,
+            messagesUsed: eligibility.messagesUsed
+          });
+        }
+        
+        if (eligibility.requiresUpgrade) {
+          return res.status(403).json({
+            message: "🚀 Trial complete! Upgrade to Pro for $5/month to continue generating amazing messages.",
+            requiresUpgrade: true,
+            messagesUsed: eligibility.messagesUsed
+          });
+        }
+        
         return res.status(403).json({ 
-          message: `You've reached your ${userPlan.messagesPerMonth} message limit for this month. Upgrade your plan to generate more messages.`,
-          currentUsage: user?.messagesUsedThisMonth || 0,
-          planLimit: userPlan.messagesPerMonth,
-          plan: user?.plan || 'free'
+          message: "Message limit reached. Please try again later." 
         });
       }
       
@@ -172,7 +185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         resume: validatedInput.resumeContent
       });
 
-      // Store the generated message
+      // Store the generated message with user and IP tracking
       const messageRecord = await storage.createMessage({
         linkedinUrl: validatedInput.linkedinUrl,
         bioText: validatedInput.bioText,
@@ -180,15 +193,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         generatedMessage: generatedMessage.message,
         personalizationScore: generatedMessage.personalizationScore,
         wordCount: generatedMessage.wordCount,
-        estimatedResponseRate: generatedMessage.estimatedResponseRate
+        estimatedResponseRate: generatedMessage.estimatedResponseRate,
+        userId: userId,
+        ipAddress: ipAddress
       });
 
-      // Increment user's message usage count
-      await storage.incrementMessageUsage(userId);
+      // Track usage based on user status
+      if (userId) {
+        // Increment logged-in user's message usage count
+        await storage.incrementMessageUsage(userId);
+      } else {
+        // Track anonymous user by IP for trial system
+        await storage.incrementIpUsage(ipAddress);
+      }
       
-      // Get updated user data to return current usage
-      const updatedUser = await storage.getUser(userId);
-      const userPlan = SUBSCRIPTION_PLANS[updatedUser?.plan as Plan || 'free'];
+      // Get updated usage data for response
+      let usageData;
+      if (userId) {
+        const updatedUser = await storage.getUser(userId);
+        const userPlan = SUBSCRIPTION_PLANS[updatedUser?.plan as Plan || 'trial'];
+        usageData = {
+          used: updatedUser?.messagesUsedThisMonth || 0,
+          limit: userPlan.messagesPerMonth,
+          remaining: userPlan.messagesPerMonth - (updatedUser?.messagesUsedThisMonth || 0)
+        };
+      } else {
+        const ipUsage = await storage.getIpUsage(ipAddress);
+        usageData = {
+          used: ipUsage.messagesUsed,
+          limit: 1, // Anonymous users get 1 free message
+          remaining: 1 - ipUsage.messagesUsed
+        };
+      }
 
       res.json({
         id: messageRecord.id,

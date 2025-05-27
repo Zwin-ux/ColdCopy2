@@ -196,6 +196,79 @@ export class MemStorage implements IStorage {
     
     return user.messagesUsedThisMonth < userPlan.messagesPerMonth;
   }
+
+  // IP-based trial tracking for anonymous users
+  async getIpUsage(ipAddress: string): Promise<{ messagesUsed: number; canGenerate: boolean }> {
+    const ipData = this.ipTracking.get(ipAddress);
+    if (!ipData) {
+      return { messagesUsed: 0, canGenerate: true };
+    }
+    
+    // Check if we need to reset monthly usage
+    const now = new Date();
+    const lastReset = ipData.lastResetDate;
+    const isNewMonth = now.getMonth() !== lastReset.getMonth() || now.getFullYear() !== lastReset.getFullYear();
+    
+    if (isNewMonth) {
+      ipData.messagesUsed = 0;
+      ipData.lastResetDate = now;
+    }
+    
+    return { 
+      messagesUsed: ipData.messagesUsed, 
+      canGenerate: ipData.messagesUsed < 1 // Only 1 free message for anonymous users
+    };
+  }
+
+  async incrementIpUsage(ipAddress: string): Promise<void> {
+    const existing = this.ipTracking.get(ipAddress);
+    if (existing) {
+      existing.messagesUsed++;
+    } else {
+      this.ipTracking.set(ipAddress, {
+        messagesUsed: 1,
+        lastResetDate: new Date()
+      });
+    }
+  }
+
+  async checkTrialEligibility(userId?: number, ipAddress?: string): Promise<{
+    canGenerate: boolean;
+    messagesUsed: number;
+    requiresLogin: boolean;
+    requiresUpgrade: boolean;
+  }> {
+    // If user is logged in, check their account status
+    if (userId) {
+      const user = await this.getUser(userId);
+      if (!user) {
+        return { canGenerate: false, messagesUsed: 0, requiresLogin: true, requiresUpgrade: false };
+      }
+
+      const plan = SUBSCRIPTION_PLANS[user.plan];
+      const canGenerate = user.messagesUsedThisMonth < plan.messagesPerMonth;
+      
+      return {
+        canGenerate,
+        messagesUsed: user.messagesUsedThisMonth,
+        requiresLogin: false,
+        requiresUpgrade: !canGenerate && user.plan === "trial"
+      };
+    }
+
+    // For anonymous users, check IP-based usage
+    if (ipAddress) {
+      const ipUsage = await this.getIpUsage(ipAddress);
+      return {
+        canGenerate: ipUsage.canGenerate,
+        messagesUsed: ipUsage.messagesUsed,
+        requiresLogin: !ipUsage.canGenerate, // After 1 message, require login
+        requiresUpgrade: false
+      };
+    }
+
+    return { canGenerate: false, messagesUsed: 0, requiresLogin: true, requiresUpgrade: false };
+  }
 }
 
 export class DatabaseStorage implements IStorage {
