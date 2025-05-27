@@ -1,10 +1,64 @@
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
+import passport from "passport";
+import { Strategy as LocalStrategy } from "passport-local";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { storage } from "./storage";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Session configuration
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'coldcopy-dev-secret-key-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
+// Passport configuration
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Passport strategy
+passport.use(new LocalStrategy(
+  { usernameField: 'username' },
+  async (username: string, password: string, done) => {
+    try {
+      const user = await storage.getUserByUsername(username);
+      if (!user) {
+        return done(null, false, { message: 'User not found' });
+      }
+      
+      // In production, compare hashed passwords
+      if (user.password !== password) {
+        return done(null, false, { message: 'Invalid password' });
+      }
+      
+      return done(null, user);
+    } catch (error) {
+      return done(error);
+    }
+  }
+));
+
+passport.serializeUser((user: any, done) => {
+  done(null, user.id);
+});
+
+passport.deserializeUser(async (id: number, done) => {
+  try {
+    const user = await storage.getUser(id);
+    done(null, user);
+  } catch (error) {
+    done(error);
+  }
+});
 
 app.use((req, res, next) => {
   const start = Date.now();
