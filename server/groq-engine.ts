@@ -84,7 +84,20 @@ export async function generatePersonalizedMessage(params: {
     const response = JSON.parse(chatCompletion.choices[0]?.message?.content || '{}');
     
     // Validate and format the response
-    const message = response.message || "Hi there,\n\nI'd love to connect and learn more about your experience.\n\nBest regards,\n[Your Name]";
+    let message = response.message || "Hi there,\n\nI'd love to connect and learn more about your experience.\n\nBest regards,\n[Your Name]";
+    
+    // Post-process to remove fake names and ensure data integrity
+    const commonFakeNames = ['Alex', 'Sarah', 'John', 'Michael', 'Rachel', 'David', 'Lisa', 'Jennifer', 'Elon', 'Guillermo', 'Maria', 'Carlos', 'Ana', 'James', 'Emily', 'Robert', 'Jessica', 'Chris', 'Amanda', 'Matthew', 'Ashley', 'Daniel', 'Nicole', 'Andrew', 'Elizabeth', 'Ryan', 'Samantha', 'Kevin', 'Lauren', 'Brian', 'Stephanie'];
+    
+    for (const fakeName of commonFakeNames) {
+      const fakeGreeting = `Hi ${fakeName},`;
+      if (message.startsWith(fakeGreeting)) {
+        message = message.replace(fakeGreeting, 'Hi there,');
+        console.log(`🛡️ Anti-hallucination filter activated: Removed fake name "${fakeName}"`);
+        break;
+      }
+    }
+    
     const personalizationScore = Math.min(100, Math.max(60, response.personalizationScore || 75));
     const wordCount = message.split(/\s+/).length;
     const estimatedResponseRate = Math.min(95, Math.max(25, response.estimatedResponseRate || 35));
@@ -158,8 +171,7 @@ function createPersonalizationPrompt(params: {
 6. Reference ONLY actual information from bio text - no fabricated details
 7. Professional but conversational (100-150 words)
 8. Include clear but soft call to action
-9. ANY NAME INVENTION = COMPLETE SYSTEM FAILURE`;
-8. Create genuine connection points
+9. ANY NAME INVENTION = COMPLETE SYSTEM FAILURE
 
 Return JSON with:
 {
