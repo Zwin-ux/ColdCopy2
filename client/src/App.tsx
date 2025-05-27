@@ -14,12 +14,12 @@ import NotFound from "@/pages/not-found";
 
 function Router() {
   // Check if user is authenticated
-  const { data: user, isLoading } = useQuery({
+  const { data: user, isLoading, error } = useQuery({
     queryKey: ['/api/user'],
     retry: false,
   });
 
-  const isAuthenticated = !!user;
+  const isAuthenticated = !!user && !error;
 
   if (isLoading) {
     return (
