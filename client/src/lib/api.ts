@@ -6,6 +6,12 @@ export interface GenerateMessageResponse {
   personalizationScore: number;
   wordCount: number;
   estimatedResponseRate: number;
+  detectedInfo?: {
+    name?: string;
+    company?: string;
+    role?: string;
+    location?: string;
+  };
 }
 
 export async function generateMessage(data: {
