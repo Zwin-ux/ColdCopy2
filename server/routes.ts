@@ -1,309 +1,289 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import passport from "passport";
 import { storage } from "./storage";
-import { generateMessageRequestSchema, insertMessageSchema, subscriptionSchema, SUBSCRIPTION_PLANS, type Plan } from "@shared/schema";
 import { generatePersonalizedMessage } from "./groq-engine";
+import { generateMessageRequestSchema, insertUserSchema, SUBSCRIPTION_PLANS } from "@shared/schema";
+import bcrypt from "bcrypt";
+import session from "express-session";
 import multer from "multer";
+import MemoryStore from "memorystore";
 import Stripe from "stripe";
-import { z } from "zod";
 
-// No AI dependencies - using smart template system instead
+const upload = multer({ storage: multer.memoryStorage() });
 
-// Initialize Stripe
+// Configure session
+const MemStore = MemoryStore(session);
+
 if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+  console.warn("STRIPE_SECRET_KEY not found - payment functionality will be disabled");
 }
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-04-30.basil",
-});
 
-// Stripe Price IDs - will be configured in production
-const STRIPE_PRICE_IDS = {
-  pro: process.env.STRIPE_PRO_PRICE_ID,
-  agency: process.env.STRIPE_AGENCY_PRICE_ID
-};
-
-// Configure multer for file uploads
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ];
-    
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type. Only PDF, DOC, and DOCX files are allowed.'));
-    }
-  }
-});
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2023-10-16",
+}) : null;
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // OAuth placeholder routes (requires setup of OAuth credentials)
-  app.get("/api/auth/google", (req, res) => {
-    res.status(501).json({ 
-      message: "Google OAuth requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables. Please contact support to enable social login." 
-    });
-  });
+  // Session middleware
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'dev-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    store: new MemStore({
+      checkPeriod: 86400000 // prune expired entries every 24h
+    }),
+    cookie: {
+      secure: false, // Set to true in production with HTTPS
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+  }));
 
-  app.get("/api/auth/apple", (req, res) => {
-    res.status(501).json({ 
-      message: "Apple OAuth requires Apple Developer credentials. Please contact support to enable social login." 
-    });
-  });
+  // Authentication middleware
+  function requireAuth(req: any, res: any, next: any) {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+    next();
+  }
 
-  // Authentication routes
-  app.post("/api/auth/register", async (req, res) => {
+  // Register route
+  app.post("/api/register", async (req, res) => {
     try {
-      const { username, email, password } = req.body;
+      const validatedData = insertUserSchema.parse(req.body);
       
       // Check if user already exists
-      const existingUser = await storage.getUserByUsername(username);
+      const existingUser = await storage.getUserByUsername(validatedData.username);
       if (existingUser) {
-        return res.status(400).json({ error: "Username already exists" });
+        return res.status(400).json({ message: "Username already exists" });
       }
 
-      // Create new user
-      const newUser = await storage.createUser({
-        username,
-        email,
-        password, // In production, this should be hashed
+      // Check if email already exists
+      if (validatedData.email) {
+        const existingEmailUser = await storage.getUserByEmail(validatedData.email);
+        if (existingEmailUser) {
+          return res.status(400).json({ message: "Email already exists" });
+        }
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+      
+      // Create user
+      const user = await storage.createUser({
+        ...validatedData,
+        password: hashedPassword
       });
 
-      // Log the user in
-      req.login(newUser, (err) => {
-        if (err) {
-          return res.status(500).json({ error: "Failed to log in after registration" });
+      // Set session
+      req.session.userId = user.id;
+
+      res.json({
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email
         }
-        res.json({ user: { id: newUser.id, username: newUser.username, email: newUser.email } });
       });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error("Registration error:", error);
+      res.status(400).json({ message: error.message || "Registration failed" });
     }
   });
 
-  app.post("/api/auth/login", async (req, res) => {
+  // Login route
+  app.post("/api/login", async (req, res) => {
     try {
       const { username, password } = req.body;
       
-      const user = await storage.getUserByUsername(username);
-      if (!user || user.password !== password) { // In production, use proper password hashing
-        return res.status(401).json({ error: "Invalid username or password" });
+      if (!username || !password) {
+        return res.status(400).json({ message: "Username and password required" });
       }
 
-      req.login(user, (err) => {
-        if (err) {
-          return res.status(500).json({ error: "Failed to log in" });
+      // Find user
+      const user = await storage.getUserByUsername(username);
+      if (!user) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      // Check password
+      const isValid = await bcrypt.compare(password, user.password);
+      if (!isValid) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      // Set session
+      req.session.userId = user.id;
+
+      res.json({
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email
         }
-        res.json({ user: { id: user.id, username: user.username, email: user.email } });
       });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ message: "Login failed" });
     }
   });
 
-  app.post("/api/auth/logout", (req, res) => {
-    req.logout((err) => {
+  // Get current user
+  app.get("/api/user", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({
+        id: user.id,
+        username: user.username,
+        email: user.email
+      });
+    } catch (error) {
+      console.error("Get user error:", error);
+      res.status(500).json({ message: "Failed to get user" });
+    }
+  });
+
+  // Logout route
+  app.post("/api/logout", (req, res) => {
+    req.session.destroy((err) => {
       if (err) {
-        return res.status(500).json({ error: "Failed to log out" });
+        return res.status(500).json({ message: "Could not log out" });
       }
       res.json({ message: "Logged out successfully" });
     });
   });
 
-  app.get("/api/auth/me", (req, res) => {
-    if (req.isAuthenticated()) {
-      res.json({ user: { id: req.user.id, username: req.user.username, email: req.user.email } });
-    } else {
-      res.status(401).json({ error: "Not authenticated" });
-    }
-  });
-  // Generate personalized outreach message - supports trial flow with IP tracking
-  app.post("/api/generate-message", upload.single('resume'), async (req, res) => {
+  // Generate message route
+  app.post("/api/messages/generate", upload.single('resume'), async (req, res) => {
     try {
-      const { linkedinUrl, bioText } = req.body;
-      const userId = req.session?.userId; // Get from session if logged in
-      const ipAddress = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
+      // Parse form data
+      const linkedinUrl = Array.isArray(req.body.linkedinUrl) ? req.body.linkedinUrl[0] : req.body.linkedinUrl;
+      const bioText = Array.isArray(req.body.bioText) ? req.body.bioText[0] : req.body.bioText;
+      const style = Array.isArray(req.body.style) ? req.body.style[0] : req.body.style;
       
-      console.log('Generate message request - User:', userId, 'IP:', ipAddress);
+      // Validate required fields
+      if (!linkedinUrl && !bioText) {
+        return res.status(400).json({ 
+          message: "Please provide either a LinkedIn URL or bio text to generate a personalized message." 
+        });
+      }
 
-      // Check trial eligibility using your brilliant 2-message system
-      const eligibility = await storage.checkTrialEligibility(userId, ipAddress);
-      
-      if (!eligibility.canGenerate) {
-        if (eligibility.requiresLogin) {
-          return res.status(401).json({
-            message: "🎉 Free trial used! Create an account to get your second free message.",
-            requiresLogin: true,
-            messagesUsed: eligibility.messagesUsed
+      // Handle resume file
+      let resumeContent = null;
+      if (req.file) {
+        resumeContent = req.file.buffer.toString('utf-8');
+      }
+
+      // Check user authentication and limits
+      if (req.session.userId) {
+        // User is logged in - check their message limit
+        const user = await storage.getUser(req.session.userId);
+        if (!user) {
+          return res.status(401).json({ message: "User not found" });
+        }
+
+        const canGenerate = await storage.canUserGenerateMessage(user.id);
+        if (!canGenerate) {
+          const userPlan = SUBSCRIPTION_PLANS[user.plan as keyof typeof SUBSCRIPTION_PLANS];
+          return res.status(403).json({ 
+            message: `You've reached your monthly limit of ${userPlan.messagesPerMonth} messages. Please upgrade your plan to continue.`,
+            requiresUpgrade: true
           });
         }
+
+        // Generate message
+        const result = await generatePersonalizedMessage({
+          linkedinUrl,
+          bioText,
+          style: style || "professional",
+          resume: resumeContent
+        });
+
+        // Save message and increment usage
+        await storage.createMessage({
+          generatedMessage: result.message,
+          linkedinUrl,
+          bioText,
+          resumeContent,
+          personalizationScore: result.personalizationScore,
+          wordCount: result.wordCount,
+          estimatedResponseRate: result.estimatedResponseRate
+        });
+
+        await storage.incrementMessageUsage(user.id);
+
+        const updatedUser = await storage.getUser(user.id);
+        const userPlan = SUBSCRIPTION_PLANS[updatedUser!.plan as keyof typeof SUBSCRIPTION_PLANS];
+
+        res.json({
+          ...result,
+          messagesUsed: updatedUser!.messagesUsedThisMonth,
+          messagesRemaining: userPlan.messagesPerMonth - updatedUser!.messagesUsedThisMonth
+        });
+      } else {
+        // Anonymous user - allow only 1 free message, then require signup
+        // For simplicity, we'll use session to track anonymous usage
+        const anonymousMessagesUsed = req.session.anonymousMessagesUsed || 0;
         
-        if (eligibility.requiresUpgrade) {
-          return res.status(403).json({
-            message: "🚀 Trial complete! Upgrade to Pro for $5/month to continue generating amazing messages.",
-            requiresUpgrade: true,
-            messagesUsed: eligibility.messagesUsed
+        if (anonymousMessagesUsed >= 1) {
+          return res.status(403).json({ 
+            message: "You've used your free message! Please create an account to generate another message for free.",
+            requiresLogin: true
           });
         }
-        
-        return res.status(403).json({ 
-          message: "Message limit reached. Please try again later." 
+
+        // Generate message for anonymous user
+        const result = await generatePersonalizedMessage({
+          linkedinUrl,
+          bioText,
+          style: style || "professional",
+          resume: resumeContent
         });
-      }
-      
-      // Validate input
-      const validatedInput = generateMessageRequestSchema.parse({
-        linkedinUrl: linkedinUrl || undefined,
-        bioText: bioText || undefined,
-        resumeContent: req.file ? req.file.buffer.toString('utf-8') : undefined
-      });
 
-      if (!validatedInput.linkedinUrl && !validatedInput.bioText) {
-        return res.status(400).json({ 
-          message: "Please provide at least a LinkedIn URL or bio text" 
+        // Save message without user ID
+        await storage.createMessage({
+          generatedMessage: result.message,
+          linkedinUrl,
+          bioText,
+          resumeContent,
+          personalizationScore: result.personalizationScore,
+          wordCount: result.wordCount,
+          estimatedResponseRate: result.estimatedResponseRate
         });
-      }
 
-      // Generate message using Groq AI
-      const { templateId, recipientName, recipientCompany, recipientRole } = req.body;
-      
-      const generatedMessage = await generatePersonalizedMessage({
-        linkedinUrl: validatedInput.linkedinUrl,
-        bioText: validatedInput.bioText,
-        templateId: templateId || 'professional_intro',
-        recipientName: recipientName,
-        recipientCompany: recipientCompany,
-        recipientRole: recipientRole,
-        resume: validatedInput.resumeContent
-      });
+        // Increment anonymous usage
+        req.session.anonymousMessagesUsed = anonymousMessagesUsed + 1;
 
-      // Store the generated message with user and IP tracking
-      const messageRecord = await storage.createMessage({
-        linkedinUrl: validatedInput.linkedinUrl,
-        bioText: validatedInput.bioText,
-        resumeContent: validatedInput.resumeContent,
-        generatedMessage: generatedMessage.message,
-        personalizationScore: generatedMessage.personalizationScore,
-        wordCount: generatedMessage.wordCount,
-        estimatedResponseRate: generatedMessage.estimatedResponseRate,
-        userId: userId,
-        ipAddress: ipAddress
-      });
-
-      // Track usage based on user status
-      if (userId) {
-        // Increment logged-in user's message usage count
-        await storage.incrementMessageUsage(userId);
-      } else {
-        // Track anonymous user by IP for trial system
-        await storage.incrementIpUsage(ipAddress);
-      }
-      
-      // Get updated usage data for response
-      let usageData;
-      if (userId) {
-        const updatedUser = await storage.getUser(userId);
-        const userPlan = SUBSCRIPTION_PLANS[updatedUser?.plan as Plan || 'trial'];
-        usageData = {
-          used: updatedUser?.messagesUsedThisMonth || 0,
-          limit: userPlan.messagesPerMonth,
-          remaining: userPlan.messagesPerMonth - (updatedUser?.messagesUsedThisMonth || 0)
-        };
-      } else {
-        const ipUsage = await storage.getIpUsage(ipAddress);
-        usageData = {
-          used: ipUsage.messagesUsed,
-          limit: 1, // Anonymous users get 1 free message
-          remaining: 1 - ipUsage.messagesUsed
-        };
-      }
-
-      res.json({
-        id: messageRecord.id,
-        message: generatedMessage.message,
-        personalizationScore: generatedMessage.personalizationScore,
-        wordCount: generatedMessage.wordCount,
-        estimatedResponseRate: generatedMessage.estimatedResponseRate,
-        templateUsed: generatedMessage.templateName,
-        usage: {
-          used: updatedUser?.messagesUsedThisMonth || 0,
-          limit: userPlan.messagesPerMonth,
-          remaining: userPlan.messagesPerMonth - (updatedUser?.messagesUsedThisMonth || 0)
-        }
-      });
-
-    } catch (error) {
-      console.error("Error generating message:", error);
-      
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          message: "Invalid input data", 
-          errors: error.errors 
-        });
-      }
-      
-      if (error instanceof multer.MulterError) {
-        return res.status(400).json({ 
-          message: error.message 
+        res.json({
+          ...result,
+          messagesUsed: 1,
+          messagesRemaining: 0,
+          requiresLogin: true // Signal that they need to register for more
         });
       }
 
-      res.status(500).json({ 
-        message: "Failed to generate message. Please try again with different inputs." 
-      });
+    } catch (error: any) {
+      console.error("Message generation error:", error);
+      res.status(500).json({ message: error.message || "Failed to generate message" });
     }
   });
 
-  // Get all messages
-  app.get("/api/messages", async (req, res) => {
+  // Get user subscription status
+  app.get("/api/user/subscription", requireAuth, async (req, res) => {
     try {
-      const messages = await storage.getMessages();
-      res.json(messages);
-    } catch (error) {
-      console.error("Error fetching messages:", error);
-      res.status(500).json({ message: "Failed to fetch messages" });
-    }
-  });
-
-  // Get specific message
-  app.get("/api/messages/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid message ID" });
-      }
-
-      const message = await storage.getMessageById(id);
-      if (!message) {
-        return res.status(404).json({ message: "Message not found" });
-      }
-
-      res.json(message);
-    } catch (error) {
-      console.error("Error fetching message:", error);
-      res.status(500).json({ message: "Failed to fetch message" });
-    }
-  });
-
-  // Get user subscription status and usage
-  app.get("/api/user/subscription", async (req, res) => {
-    try {
-      const userId = 1; // In production, get from authentication
-      const user = await storage.getUser(userId);
-      
+      const user = await storage.getUser(req.session.userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const userPlan = SUBSCRIPTION_PLANS[user.plan as Plan];
+      const userPlan = SUBSCRIPTION_PLANS[user.plan as keyof typeof SUBSCRIPTION_PLANS];
       
       res.json({
         plan: user.plan,
@@ -314,167 +294,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentPeriodEnd: user.currentPeriodEnd
       });
     } catch (error) {
-      console.error("Error fetching subscription:", error);
-      res.status(500).json({ message: "Failed to fetch subscription data" });
+      console.error("Get subscription error:", error);
+      res.status(500).json({ message: "Failed to get subscription status" });
     }
   });
 
-  // Create Stripe checkout session
-  app.post("/api/create-checkout-session", async (req, res) => {
-    try {
-      const { plan } = subscriptionSchema.parse(req.body);
-      const userId = 1; // In production, get from authentication
-      
-      if (plan === 'free') {
-        return res.status(400).json({ message: "Cannot create checkout for free plan" });
-      }
-
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Create or retrieve Stripe customer
-      let customerId = user.stripeCustomerId;
-      if (!customerId) {
-        const customer = await stripe.customers.create({
-          email: user.email || `user${userId}@example.com`,
-          metadata: { userId: userId.toString() }
+  // Stripe payment routes (only if Stripe is configured)
+  if (stripe) {
+    // Create payment intent for one-time payments
+    app.post("/api/create-payment-intent", requireAuth, async (req, res) => {
+      try {
+        const { amount } = req.body;
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: Math.round(amount * 100), // Convert to cents
+          currency: "usd",
         });
-        customerId = customer.id;
-        await storage.updateUserSubscription(userId, { stripeCustomerId: customerId });
+        res.json({ clientSecret: paymentIntent.client_secret });
+      } catch (error: any) {
+        console.error("Payment intent error:", error);
+        res.status(500).json({ message: "Error creating payment intent: " + error.message });
       }
+    });
 
-      const priceId = STRIPE_PRICE_IDS[plan as keyof typeof STRIPE_PRICE_IDS];
-      
-      const session = await stripe.checkout.sessions.create({
-        customer: customerId,
-        payment_method_types: ['card'],
-        line_items: [
-          {
-            price: priceId,
-            quantity: 1,
-          },
-        ],
-        mode: 'subscription',
-        success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${req.headers.origin}/cancel`,
-        metadata: {
-          userId: userId.toString(),
-          plan: plan
+    // Webhook to handle successful payments
+    app.post("/api/webhook", async (req, res) => {
+      try {
+        const event = req.body;
+
+        if (event.type === 'payment_intent.succeeded') {
+          // Handle successful payment
+          console.log('Payment succeeded:', event.data.object);
         }
-      });
 
-      res.json({ url: session.url });
-    } catch (error) {
-      console.error("Error creating checkout session:", error);
-      res.status(500).json({ message: "Failed to create checkout session" });
-    }
-  });
+        res.json({ received: true });
+      } catch (error) {
+        console.error("Webhook error:", error);
+        res.status(400).json({ message: "Webhook error" });
+      }
+    });
+  } else {
+    // Disabled Stripe routes
+    app.post("/api/create-payment-intent", (req, res) => {
+      res.status(503).json({ message: "Payment functionality is not configured" });
+    });
+  }
 
-  // Stripe webhook for handling subscription events
-  app.post("/api/webhooks/stripe", async (req, res) => {
-    let event;
-
+  // Get all messages (for admin/debugging)
+  app.get("/api/messages", async (req, res) => {
     try {
-      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-      if (webhookSecret) {
-        const signature = req.headers['stripe-signature'];
-        event = stripe.webhooks.constructEvent(req.body, signature as string, webhookSecret);
-      } else {
-        event = req.body;
-      }
-    } catch (err) {
-      console.error('Webhook signature verification failed:', err);
-      return res.status(400).send('Webhook signature verification failed');
-    }
-
-    try {
-      switch (event.type) {
-        case 'checkout.session.completed': {
-          const session = event.data.object as Stripe.Checkout.Session;
-          const userId = parseInt(session.metadata?.userId || '0');
-          const plan = session.metadata?.plan as Plan;
-          
-          if (userId && plan) {
-            await storage.updateUserSubscription(userId, {
-              stripeSubscriptionId: session.subscription as string,
-              plan: plan,
-              subscriptionStatus: 'active'
-            });
-          }
-          break;
-        }
-
-        case 'invoice.payment_succeeded': {
-          const invoice = event.data.object as Stripe.Invoice;
-          const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
-          const userId = parseInt(subscription.metadata?.userId || '0');
-          
-          if (userId) {
-            await storage.updateUserSubscription(userId, {
-              currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-              subscriptionStatus: 'active'
-            });
-            // Reset monthly usage at the start of new billing period
-            await storage.resetMonthlyUsage(userId);
-          }
-          break;
-        }
-
-        case 'invoice.payment_failed': {
-          const invoice = event.data.object as Stripe.Invoice;
-          const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
-          const userId = parseInt(subscription.metadata?.userId || '0');
-          
-          if (userId) {
-            await storage.updateUserSubscription(userId, {
-              subscriptionStatus: 'past_due'
-            });
-          }
-          break;
-        }
-
-        case 'customer.subscription.deleted': {
-          const subscription = event.data.object as Stripe.Subscription;
-          const userId = parseInt(subscription.metadata?.userId || '0');
-          
-          if (userId) {
-            await storage.updateUserSubscription(userId, {
-              plan: 'free',
-              subscriptionStatus: 'canceled',
-              stripeSubscriptionId: null
-            });
-          }
-          break;
-        }
-      }
-
-      res.json({ received: true });
+      const messages = await storage.getMessages();
+      res.json(messages);
     } catch (error) {
-      console.error('Error processing webhook:', error);
-      res.status(500).json({ message: 'Webhook processing failed' });
-    }
-  });
-
-  // Cancel subscription
-  app.post("/api/cancel-subscription", async (req, res) => {
-    try {
-      const userId = 1; // In production, get from authentication
-      const user = await storage.getUser(userId);
-      
-      if (!user?.stripeSubscriptionId) {
-        return res.status(404).json({ message: "No active subscription found" });
-      }
-
-      await stripe.subscriptions.update(user.stripeSubscriptionId, {
-        cancel_at_period_end: true
-      });
-
-      res.json({ message: "Subscription will be canceled at the end of the current period" });
-    } catch (error) {
-      console.error("Error canceling subscription:", error);
-      res.status(500).json({ message: "Failed to cancel subscription" });
+      console.error("Get messages error:", error);
+      res.status(500).json({ message: "Failed to get messages" });
     }
   });
 
