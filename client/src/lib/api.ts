@@ -30,7 +30,7 @@ export async function generateMessage(data: {
   // Add default style if not provided
   formData.append('style', 'professional');
 
-  const response = await fetch('/api/messages/generate', {
+  const response = await fetch('/api/generate-message', {
     method: 'POST',
     body: formData,
     credentials: 'include',
