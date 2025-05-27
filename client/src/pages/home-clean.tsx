@@ -36,6 +36,7 @@ export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [generatedMessage, setGeneratedMessage] = useState<GenerateMessageResponse | null>(null);
   const [charCount, setCharCount] = useState(0);
+  const [lastError, setLastError] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Fetch current subscription status
@@ -55,6 +56,7 @@ export default function Home() {
     mutationFn: generateMessage,
     onSuccess: (data) => {
       setGeneratedMessage(data);
+      setLastError(null); // Clear any previous errors
       refetchSubscription(); // Refresh usage data
       toast({
         title: "Message Generated!",
@@ -62,24 +64,7 @@ export default function Home() {
       });
     },
     onError: (error) => {
-      if (error.message.includes('reached your') && error.message.includes('message limit')) {
-        toast({
-          title: "Usage Limit Reached",
-          description: error.message,
-          variant: "destructive",
-          action: (
-            <Button variant="outline" size="sm" onClick={() => window.location.href = '/pricing'}>
-              Upgrade Plan
-            </Button>
-          ),
-        });
-      } else {
-        toast({
-          title: "Generation Failed",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
+      setLastError(error.message);
     },
   });
 
@@ -138,7 +123,7 @@ export default function Home() {
             <nav className="hidden md:flex items-center space-x-8">
               <a href="#features" className="text-sm font-medium text-foreground hover:text-secondary transition-colors">Features</a>
               <a href="/pricing" className="text-sm font-medium text-foreground hover:text-secondary transition-colors">Pricing</a>
-              <Button variant="outline" size="sm">Sign In</Button>
+              <Button variant="outline" size="sm" onClick={() => window.location.href = '/auth'}>Sign In</Button>
               <Button size="sm" onClick={() => window.location.href = '/pricing'}>Get Started</Button>
             </nav>
             <Button variant="ghost" size="sm" className="md:hidden">
@@ -334,6 +319,22 @@ export default function Home() {
               </Form>
             </CardContent>
           </Card>
+
+          {/* Animated Error Section with Origami Bird */}
+          {lastError && (
+            <div className="mb-8">
+              <OrigamiError
+                error={lastError}
+                onRetry={handleRegenerate}
+                onUpgrade={() => window.location.href = '/pricing'}
+                type={
+                  lastError.includes('limit') || lastError.includes('quota') ? 'quota' :
+                  lastError.includes('OpenAI') || lastError.includes('generate') ? 'generation' :
+                  'general'
+                }
+              />
+            </div>
+          )}
 
           {/* Output Section */}
           {generatedMessage && (
