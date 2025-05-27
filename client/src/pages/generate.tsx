@@ -76,6 +76,17 @@ const getCharCountColor = (count: number, max: number): string => {
   return "text-gray-600";
 };
 
+const getComplexityMeterColor = (score: number): string => {
+  if (score >= 75) return "bg-green-500";
+  if (score >= 50) return "bg-blue-500";
+  if (score >= 25) return "bg-yellow-500";
+  return "bg-red-500";
+};
+
+const getComplexityBarWidth = (score: number): string => {
+  return `${Math.max(5, score)}%`;
+};
+
 export default function Generate() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [generatedMessage, setGeneratedMessage] = useState<GenerateMessageResponse | null>(null);
@@ -239,18 +250,61 @@ export default function Generate() {
                                 }}
                               />
                             </FormControl>
-                            <div className="flex justify-between items-center">
-                              <FormMessage />
-                              <div className="flex items-center space-x-4 text-xs">
-                                <span className={getCharCountColor(bioCharCount, 500)}>
-                                  {bioCharCount}/500 chars
-                                </span>
-                                {bioCharCount > 0 && (
-                                  <span className={getComplexityScore(field.value || "").color}>
-                                    Quality: {getComplexityScore(field.value || "").label}
+                            <FormMessage />
+                            
+                            {/* Intelligent Character Count & Complexity Visualization */}
+                            <div className="mt-3 space-y-3">
+                              {/* Character Count Progress Bar */}
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-gray-600 font-medium">Character Usage</span>
+                                  <span className={`font-semibold ${getCharCountColor(bioCharCount, 500)}`}>
+                                    {bioCharCount}/500
                                   </span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                                  <div 
+                                    className={`h-full rounded-full transition-all duration-300 ${
+                                      bioCharCount >= 450 ? 'bg-gradient-to-r from-red-500 to-red-600' : 
+                                      bioCharCount >= 350 ? 'bg-gradient-to-r from-yellow-500 to-yellow-600' : 
+                                      bioCharCount >= 200 ? 'bg-gradient-to-r from-blue-500 to-blue-600' :
+                                      'bg-gradient-to-r from-gray-400 to-gray-500'
+                                    }`}
+                                    style={{ width: `${Math.min((bioCharCount / 500) * 100, 100)}%` }}
+                                  />
+                                </div>
+                                {bioCharCount >= 450 && (
+                                  <div className="text-xs text-red-600 font-medium">
+                                    ⚠️ Approaching character limit
+                                  </div>
                                 )}
                               </div>
+
+                              {/* Message Quality Complexity Meter */}
+                              {bioCharCount > 20 && (
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <span className="text-gray-600 font-medium">Message Quality</span>
+                                    <span className={`font-semibold ${getComplexityScore(field.value || "").color}`}>
+                                      {getComplexityScore(field.value || "").label}
+                                    </span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                                    <div 
+                                      className={`h-full rounded-full transition-all duration-500 ${getComplexityMeterColor(getComplexityScore(field.value || "").score)}`}
+                                      style={{ width: getComplexityBarWidth(getComplexityScore(field.value || "").score) }}
+                                    />
+                                  </div>
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-gray-500">
+                                      💡 Better quality = higher response rates
+                                    </span>
+                                    <span className="text-gray-500 font-medium">
+                                      {Math.round(getComplexityScore(field.value || "").score)}%
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </FormItem>
                         )}
