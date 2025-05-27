@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Mail, Link2, Brain, Copy, FileText, Users, Zap, Check, Star, ArrowRight, Menu, X } from "lucide-react";
+import { Mail, Link2, Brain, Copy, FileText, Users, Zap, Check, Star, ArrowRight, Menu, X, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,11 +22,25 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+interface SubscriptionStatus {
+  plan: string;
+  subscriptionStatus: string;
+  messagesUsed: number;
+  messagesLimit: number;
+  messagesRemaining: number;
+  currentPeriodEnd: string | null;
+}
+
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [generatedMessage, setGeneratedMessage] = useState<GenerateMessageResponse | null>(null);
   const [charCount, setCharCount] = useState(0);
   const { toast } = useToast();
+
+  // Fetch current subscription status
+  const { data: subscription, refetch: refetchSubscription } = useQuery<SubscriptionStatus>({
+    queryKey: ['/api/user/subscription'],
+  });
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -40,17 +54,31 @@ export default function Home() {
     mutationFn: generateMessage,
     onSuccess: (data) => {
       setGeneratedMessage(data);
+      refetchSubscription(); // Refresh usage data
       toast({
         title: "Message Generated!",
         description: "Your personalized outreach message has been created.",
       });
     },
     onError: (error) => {
-      toast({
-        title: "Generation Failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      if (error.message.includes('reached your') && error.message.includes('message limit')) {
+        toast({
+          title: "Usage Limit Reached",
+          description: error.message,
+          variant: "destructive",
+          action: (
+            <Button variant="outline" size="sm" onClick={() => window.location.href = '/pricing'}>
+              Upgrade Plan
+            </Button>
+          ),
+        });
+      } else {
+        toast({
+          title: "Generation Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -108,9 +136,9 @@ export default function Home() {
             </div>
             <nav className="hidden md:flex items-center space-x-8">
               <a href="#features" className="text-sm font-medium text-foreground hover:text-secondary transition-colors">Features</a>
-              <a href="#pricing" className="text-sm font-medium text-foreground hover:text-secondary transition-colors">Pricing</a>
+              <a href="/pricing" className="text-sm font-medium text-foreground hover:text-secondary transition-colors">Pricing</a>
               <Button variant="outline" size="sm">Sign In</Button>
-              <Button size="sm">Get Started</Button>
+              <Button size="sm" onClick={() => window.location.href = '/pricing'}>Get Started</Button>
             </nav>
             <Button variant="ghost" size="sm" className="md:hidden">
               <Menu className="w-4 h-4" />
@@ -167,6 +195,56 @@ export default function Home() {
       {/* Main Dashboard */}
       <section className="py-16 bg-background">
         <div className="max-w-7xl mx-auto px-6">
+          {/* Subscription Status Widget */}
+          {subscription && (
+            <div className="mb-8">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-2">
+                        {subscription.plan === 'free' && <Star className="w-5 h-5 text-muted-foreground" />}
+                        {subscription.plan === 'pro' && <Zap className="w-5 h-5 text-secondary" />}
+                        {subscription.plan === 'agency' && <Crown className="w-5 h-5 text-primary" />}
+                        <span className="font-semibold capitalize">{subscription.plan} Plan</span>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {subscription.messagesUsed} / {subscription.messagesLimit} messages used
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="text-right">
+                        <div className="text-sm font-medium">
+                          {subscription.messagesRemaining} remaining
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {((subscription.messagesUsed / subscription.messagesLimit) * 100).toFixed(0)}% used
+                        </div>
+                      </div>
+                      {subscription.plan === 'free' && subscription.messagesRemaining < 5 && (
+                        <Button size="sm" onClick={() => window.location.href = '/pricing'}>
+                          Upgrade Plan
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  {/* Usage Progress Bar */}
+                  <div className="mt-3">
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div 
+                        className={`h-2 rounded-full transition-all duration-300 ${
+                          (subscription.messagesUsed / subscription.messagesLimit) >= 0.9 ? 'bg-red-500' :
+                          (subscription.messagesUsed / subscription.messagesLimit) >= 0.7 ? 'bg-yellow-500' : 'bg-green-500'
+                        }`}
+                        style={{ width: `${Math.min((subscription.messagesUsed / subscription.messagesLimit) * 100, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           <div className="text-center mb-12">
             <h3 className="text-3xl font-bold text-primary mb-4">Transform Your Outreach Process</h3>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">

@@ -32,6 +32,27 @@ export class MemStorage implements IStorage {
     this.messages = new Map();
     this.currentUserId = 1;
     this.currentMessageId = 1;
+    
+    // Create a demo user for testing
+    this.createDemoUser();
+  }
+
+  private async createDemoUser() {
+    const demoUser: User = {
+      id: 1,
+      username: "demo",
+      password: "demo",
+      email: "demo@coldcopy.com",
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+      plan: "free",
+      messagesUsedThisMonth: 3, // Start with some usage for demo
+      subscriptionStatus: "active",
+      currentPeriodEnd: null,
+      createdAt: new Date()
+    };
+    this.users.set(1, demoUser);
+    this.currentUserId = 2; // Next user will get ID 2
   }
 
   async getUser(id: number): Promise<User | undefined> {
