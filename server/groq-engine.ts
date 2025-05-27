@@ -59,7 +59,7 @@ export async function generatePersonalizedMessage(params: {
       messages: [
         {
           role: "system",
-          content: "You are an expert at writing highly personalized, professional outreach messages. Create messages that feel authentic, reference specific details, and have clear value propositions. Always respond in JSON format."
+          content: "You are an expert at writing professional outreach messages. CRITICAL: You must NEVER invent or make up names, companies, or any details not explicitly provided. If no recipient name is given, use 'Hi there' or 'Hello'. Only reference information that is explicitly stated in the bio text. Always respond in JSON format."
         },
         {
           role: "user",
@@ -130,14 +130,15 @@ function createPersonalizationPrompt(params: {
   const templateGuidance = getTemplateGuidance(templateId || 'professional_intro');
   prompt += `\nMessage Style: ${templateGuidance}\n`;
 
-  prompt += `\nRequirements:
-1. Be genuinely personalized - reference specific details from the provided information
-2. Keep it professional but conversational (100-150 words)
-3. Include a clear but soft call to action
-4. Avoid generic phrases and templates
-5. Make it feel authentic and human
-6. Use the recipient's actual name (not placeholders)
-7. Reference their company and role naturally
+  prompt += `\nCRITICAL REQUIREMENTS:
+1. Use ONLY information explicitly provided in the bio/description above
+2. If no recipient name is given, start with "Hi there" or "Hello"
+3. NEVER invent or make up names, companies, roles, or any other details
+4. Reference only the actual company and role mentioned in the bio text
+5. Keep it professional but conversational (100-150 words)
+6. Include a clear but soft call to action
+7. Make it feel authentic using only real provided information
+8. Do not assume or add details not explicitly stated
 8. Create genuine connection points
 
 Return JSON with:
