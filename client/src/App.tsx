@@ -5,6 +5,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/home-clean";
 import Dashboard from "@/pages/dashboard";
+import Generate from "@/pages/generate";
+import Settings from "@/pages/settings";
+import Help from "@/pages/help";
 import Auth from "@/pages/auth";
 import Pricing from "@/pages/pricing";
 import Checkout from "@/pages/checkout";
@@ -33,6 +36,9 @@ function Router() {
     <Switch>
       <Route path="/" component={isAuthenticated ? Dashboard : Home} />
       <Route path="/dashboard" component={isAuthenticated ? Dashboard : Auth} />
+      <Route path="/generate" component={isAuthenticated ? Generate : Auth} />
+      <Route path="/settings" component={isAuthenticated ? Settings : Auth} />
+      <Route path="/help" component={isAuthenticated ? Help : Auth} />
       <Route path="/auth" component={Auth} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/checkout" component={Checkout} />
