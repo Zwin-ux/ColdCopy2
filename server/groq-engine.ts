@@ -67,7 +67,7 @@ export async function generatePersonalizedMessage(params: {
       messages: [
         {
           role: "system",
-          content: "You are an expert at writing professional outreach messages. CRITICAL: You must NEVER invent or make up names, companies, or any details not explicitly provided. If no recipient name is given, use 'Hi there' or 'Hello'. Only reference information that is explicitly stated in the bio text. Always respond in JSON format."
+          content: "You are an expert at writing professional outreach messages. ABSOLUTE RULE: NEVER invent names like 'Rachel', 'Alex', 'Sarah' or companies like 'FinTech Solutions'. If no recipient name provided, MUST use 'Hi there' or 'Hello'. If no company name in bio, do NOT mention any company name. Only use explicitly stated information. Inventing details = COMPLETE FAILURE. Always respond in JSON format."
         },
         {
           role: "user",
@@ -150,15 +150,15 @@ function createPersonalizationPrompt(params: {
   prompt += `\nMessage Style: ${templateGuidance}\n`;
 
   prompt += `\nABSOLUTE CRITICAL REQUIREMENTS - NO EXCEPTIONS:
-1. NEVER EVER invent names like "Alex", "Sarah", "John" - this is FORBIDDEN
-2. If no recipient name provided, MUST start with "Hi there" or "Hello" 
-3. Use ONLY sender's actual name: ${params.senderName || "[Your Name]"}
-4. Use ONLY sender's actual company: ${params.senderCompany || "[Your Company]"}
-5. Use ONLY sender's actual role: ${params.senderRole || "[Your Role]"}
-6. Reference ONLY actual information from the bio text provided
-7. Keep professional but conversational (100-150 words)
+1. NEVER EVER invent recipient names like "Alex", "Sarah", "John", "Guillermo", "Rachel" - STRICTLY FORBIDDEN
+2. MUST start with "Hi there" or "Hello" - NEVER use made-up names
+3. From sender info - Your name: ${params.senderName || "[Your Name]"}
+4. From sender info - Your company: ${params.senderCompany || "[Your Company]"}  
+5. From sender info - Your role: ${params.senderRole || "[Your Role]"}
+6. Reference ONLY actual information from bio text - no fabricated details
+7. Professional but conversational (100-150 words)
 8. Include clear but soft call to action
-9. VIOLATION OF NAME INVENTION RULE = TOTAL FAILURE
+9. ANY NAME INVENTION = COMPLETE SYSTEM FAILURE`;
 8. Create genuine connection points
 
 Return JSON with:
