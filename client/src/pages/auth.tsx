@@ -57,13 +57,13 @@ export default function Auth() {
 
   const loginMutation = useMutation({
     mutationFn: (data: LoginData) => 
-      apiRequest("POST", "/api/auth/login", data),
+      apiRequest("POST", "/api/login", data),
     onSuccess: () => {
       toast({
         title: "Welcome back!",
         description: "You've successfully signed in.",
       });
-      window.location.href = "/";
+      window.location.href = "/dashboard";
     },
     onError: (error: any) => {
       toast({
@@ -82,7 +82,7 @@ export default function Auth() {
         title: "Account Created!",
         description: "Welcome to ColdCopy! You can now start generating messages.",
       });
-      window.location.href = "/";
+      window.location.href = "/dashboard";
     },
     onError: (error: any) => {
       toast({
