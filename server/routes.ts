@@ -275,7 +275,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           linkedinUrl,
           bioText,
           templateId: style || "professional",
-          resume: resume || undefined
+          resume: resume || undefined,
+          senderName: req.body.senderName,
+          senderCompany: req.body.senderCompany,
+          senderRole: req.body.senderRole,
+          purpose: req.body.purpose
         });
 
         await storage.createMessage({

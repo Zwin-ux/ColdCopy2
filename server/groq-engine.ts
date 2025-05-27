@@ -149,15 +149,16 @@ function createPersonalizationPrompt(params: {
   const templateGuidance = getTemplateGuidance(templateId || 'professional_intro');
   prompt += `\nMessage Style: ${templateGuidance}\n`;
 
-  prompt += `\nCRITICAL REQUIREMENTS:
-1. Use ONLY information explicitly provided in the bio/description above
-2. If no recipient name is given, start with "Hi there" or "Hello"
-3. NEVER invent or make up names, companies, roles, or any other details
-4. Reference only the actual company and role mentioned in the bio text
-5. Keep it professional but conversational (100-150 words)
-6. Include a clear but soft call to action
-7. Make it feel authentic using only real provided information
-8. Do not assume or add details not explicitly stated
+  prompt += `\nABSOLUTE CRITICAL REQUIREMENTS - NO EXCEPTIONS:
+1. NEVER EVER invent names like "Alex", "Sarah", "John" - this is FORBIDDEN
+2. If no recipient name provided, MUST start with "Hi there" or "Hello" 
+3. Use ONLY sender's actual name: ${params.senderName || "[Your Name]"}
+4. Use ONLY sender's actual company: ${params.senderCompany || "[Your Company]"}
+5. Use ONLY sender's actual role: ${params.senderRole || "[Your Role]"}
+6. Reference ONLY actual information from the bio text provided
+7. Keep professional but conversational (100-150 words)
+8. Include clear but soft call to action
+9. VIOLATION OF NAME INVENTION RULE = TOTAL FAILURE
 8. Create genuine connection points
 
 Return JSON with:
