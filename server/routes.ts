@@ -145,6 +145,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(503).json({ message: "Payment processing temporarily unavailable" });
       }
 
+      // Get plan details
+      const planDetails = SUBSCRIPTION_PLANS[plan as keyof typeof SUBSCRIPTION_PLANS];
+      if (!planDetails || plan === 'trial') {
+        return res.status(400).json({ message: "Invalid plan selected" });
+      }
+
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         line_items: [
@@ -152,17 +158,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             price_data: {
               currency: 'usd',
               product_data: {
-                name: 'ColdCopy Pro',
-                description: 'Unlimited AI-powered personalized outreach messages',
+                name: `ColdCopy ${planDetails.name}`,
+                description: `${planDetails.messagesPerMonth} AI-powered personalized messages per month`,
               },
-              unit_amount: 500, // $5.00
+              unit_amount: planDetails.price * 100, // Convert to cents
             },
             quantity: 1,
           },
         ],
         mode: 'payment',
-        success_url: `${req.headers.origin}/success`,
-        cancel_url: `${req.headers.origin}/cancel`,
+        success_url: `${req.headers.origin || 'http://localhost:5000'}/success`,
+        cancel_url: `${req.headers.origin || 'http://localhost:5000'}/cancel`,
       });
 
       res.json({ url: session.url });

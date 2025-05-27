@@ -58,15 +58,35 @@ export const SUBSCRIPTION_PLANS = {
   },
   pro: {
     name: "Pro", 
-    price: 5,
-    messagesPerMonth: 150,
-    features: ["150 messages per month", "Advanced AI personalization", "Resume analysis", "Priority support"]
+    price: 29,
+    messagesPerMonth: 500,
+    features: [
+      "500 personalized messages/month", 
+      "Advanced AI templates & personalization", 
+      "Resume & bio deep analysis", 
+      "A/B testing suggestions",
+      "Response rate tracking",
+      "Priority email support",
+      "Export to CSV/CRM",
+      "Message history & analytics"
+    ]
   },
   agency: {
     name: "Agency",
-    price: 20, 
-    messagesPerMonth: 1000,
-    features: ["1,000 messages per month", "Team collaboration", "Advanced analytics", "Custom templates", "Dedicated support"]
+    price: 99, 
+    messagesPerMonth: 5000,
+    features: [
+      "5,000 personalized messages/month",
+      "Custom AI training on your company data", 
+      "Team workspace & collaboration tools",
+      "Advanced analytics dashboard",
+      "API access for CRM integrations",
+      "White-label options",
+      "Dedicated account manager",
+      "Custom templates & workflows",
+      "Bulk import/export tools",
+      "Advanced reporting & insights"
+    ]
   }
 } as const;
 
