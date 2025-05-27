@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { generateMessageRequestSchema, insertMessageSchema, subscriptionSchema, SUBSCRIPTION_PLANS, type Plan } from "@shared/schema";
-import { generateTemplateMessage, MESSAGE_TEMPLATES, extractNameFromLinkedIn, extractCompanyFromBio, extractRoleFromBio } from "./template-engine";
+import { generatePersonalizedMessage } from "./smart-personalization";
 import multer from "multer";
 import Stripe from "stripe";
 import { z } from "zod";
@@ -145,16 +145,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Generate message using smart template system
+      // Generate message using advanced personalization engine
       const { templateId, recipientName, recipientCompany, recipientRole } = req.body;
       
-      const generatedMessage = generateTemplateMessage({
+      const generatedMessage = generatePersonalizedMessage({
         linkedinUrl: validatedInput.linkedinUrl,
         bioText: validatedInput.bioText,
         templateId: templateId || 'professional_intro',
-        recipientName: recipientName || extractNameFromLinkedIn(validatedInput.linkedinUrl),
-        recipientCompany: recipientCompany || extractCompanyFromBio(validatedInput.bioText),
-        recipientRole: recipientRole || extractRoleFromBio(validatedInput.bioText),
+        recipientName: recipientName,
+        recipientCompany: recipientCompany,
+        recipientRole: recipientRole,
         resume: validatedInput.resumeContent
       });
 
