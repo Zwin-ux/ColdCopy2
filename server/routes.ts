@@ -190,8 +190,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create Stripe checkout session
   app.post("/api/create-checkout-session", async (req, res) => {
     try {
-      if (!req.session.userId) {
-        return res.status(401).json({ message: "Authentication required" });
+      console.log("Session data:", req.session);
+      console.log("User ID:", req.session?.userId);
+      
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "Please log in to upgrade your plan" });
       }
 
       if (!stripe) {

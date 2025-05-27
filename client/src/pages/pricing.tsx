@@ -28,7 +28,20 @@ export default function Pricing() {
 
   const createCheckoutMutation = useMutation({
     mutationFn: async (plan: string) => {
-      const response = await apiRequest("POST", "/api/create-checkout-session", { plan });
+      const response = await fetch("/api/create-checkout-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ plan })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to create checkout session");
+      }
+      
       return response.json();
     },
     onSuccess: (data) => {
@@ -36,10 +49,10 @@ export default function Pricing() {
         window.location.href = data.url;
       }
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
-        title: "Error",
-        description: "Failed to create checkout session. Please try again.",
+        title: "Checkout Failed", 
+        description: error.message || "Failed to create checkout session. Please try again.",
         variant: "destructive",
       });
     },
