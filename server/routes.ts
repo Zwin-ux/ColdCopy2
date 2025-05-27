@@ -156,6 +156,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get user subscription status
+  app.get("/api/user/subscription", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const subscription = {
+        plan: user.plan || "trial",
+        subscriptionStatus: user.subscriptionStatus || "active",
+        messagesUsed: user.messagesUsed || 0,
+        messagesLimit: SUBSCRIPTION_PLANS[user.plan || "trial"].messagesPerMonth,
+        messagesRemaining: Math.max(0, SUBSCRIPTION_PLANS[user.plan || "trial"].messagesPerMonth - (user.messagesUsed || 0)),
+        currentPeriodEnd: user.currentPeriodEnd || null
+      };
+
+      res.json(subscription);
+    } catch (error) {
+      console.error("Get subscription error:", error);
+      res.status(500).json({ message: "Failed to get subscription status" });
+    }
+  });
+
   // Logout route
   app.post("/api/logout", (req, res) => {
     req.session.destroy((err) => {
