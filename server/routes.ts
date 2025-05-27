@@ -340,23 +340,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Get resume content from request
+      const resumeContent = req.body.resume;
+      
       // Generate message for authenticated user
-      const result = await generatePersonalizedMessage({
+      const authResult = await generatePersonalizedMessage({
         linkedinUrl,
         bioText,
-        style: style || 'professional',
-        resume: resumeContent
+        templateId: style || 'professional',
+        resume: resumeContent || undefined
       });
 
       // Save message and increment usage
       const messageData = {
+        generatedMessage: authResult.message,
         linkedinUrl,
         bioText,
-        style: style || 'professional',
-        message: result.message,
-        personalizationScore: result.personalizationScore,
-        wordCount: result.wordCount,
-        estimatedResponseRate: result.estimatedResponseRate,
+        resumeContent: resumeContent || undefined,
+        personalizationScore: authResult.personalizationScore,
+        wordCount: authResult.wordCount,
+        estimatedResponseRate: authResult.estimatedResponseRate,
         userId: user.id
       };
 
@@ -368,10 +371,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         id: messageData.linkedinUrl + Date.now(),
-        message: result.message,
-        personalizationScore: result.personalizationScore,
-        wordCount: result.wordCount,
-        estimatedResponseRate: result.estimatedResponseRate,
+        message: authResult.message,
+        personalizationScore: authResult.personalizationScore,
+        wordCount: authResult.wordCount,
+        estimatedResponseRate: authResult.estimatedResponseRate,
         flow: "authenticated_user",
         messagesUsed: updatedUser!.messagesUsedThisMonth,
         messagesRemaining: userPlan.messagesPerMonth - updatedUser!.messagesUsedThisMonth
@@ -386,7 +389,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Generate message for anonymous user
-        const result = await generatePersonalizedMessage({
+        const anonResult = await generatePersonalizedMessage({
           linkedinUrl,
           bioText,
           templateId: style || "professional",
@@ -395,20 +398,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Save message without user ID
         await storage.createMessage({
-          generatedMessage: result.message,
+          generatedMessage: anonResult.message,
           linkedinUrl,
           bioText,
           resumeContent: resumeContent || undefined,
-          personalizationScore: result.personalizationScore,
-          wordCount: result.wordCount,
-          estimatedResponseRate: result.estimatedResponseRate
+          personalizationScore: anonResult.personalizationScore,
+          wordCount: anonResult.wordCount,
+          estimatedResponseRate: anonResult.estimatedResponseRate
         });
 
         // Increment anonymous usage
         req.session.anonymousMessagesUsed = anonymousMessagesUsed + 1;
 
         res.json({
-          ...result,
+          ...anonResult,
           messagesUsed: 1,
           messagesRemaining: 0,
           requiresLogin: true // Signal that they need to register for more
