@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { generateMessageRequestSchema, insertMessageSchema, subscriptionSchema, SUBSCRIPTION_PLANS, type Plan } from "@shared/schema";
-import { generatePersonalizedMessage } from "./smart-personalization";
+import { generatePersonalizedMessage } from "./groq-engine";
 import multer from "multer";
 import Stripe from "stripe";
 import { z } from "zod";
@@ -145,10 +145,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Generate message using advanced personalization engine
+      // Generate message using Groq AI
       const { templateId, recipientName, recipientCompany, recipientRole } = req.body;
       
-      const generatedMessage = generatePersonalizedMessage({
+      const generatedMessage = await generatePersonalizedMessage({
         linkedinUrl: validatedInput.linkedinUrl,
         bioText: validatedInput.bioText,
         templateId: templateId || 'professional_intro',
