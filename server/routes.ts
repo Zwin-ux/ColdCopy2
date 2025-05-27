@@ -2,13 +2,19 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { generateMessageRequestSchema, insertMessageSchema, subscriptionSchema, SUBSCRIPTION_PLANS, type Plan } from "@shared/schema";
-// Using Mistral AI instead of OpenAI for better reliability and cost
-// import OpenAI from "openai";
+import OpenAI from "openai";
 import multer from "multer";
 import Stripe from "stripe";
 import { z } from "zod";
 
-// Using Mistral AI for reliable and cost-effective message generation
+// Initialize OpenAI
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+if (!process.env.OPENAI_API_KEY) {
+  console.warn("OPENAI_API_KEY not found. Message generation will fail.");
+}
 
 // Initialize Stripe
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -176,36 +182,19 @@ Return the response in JSON format with the following structure:
   "estimatedResponseRate": estimated response rate percentage 1-100
 }`;
 
-      // Call Mistral AI API
-      console.log('Calling Mistral API with key:', process.env.MISTRAL_API_KEY ? 'KEY_PRESENT' : 'KEY_MISSING');
-      
-      const mistralResponse = await fetch('https://api.mistral.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'mistral-small-latest',
-          messages: [
-            { role: "system", content: "You are an expert outreach message writer. Always respond with valid JSON." },
-            { role: "user", content: prompt + "\n\nIMPORTANT: Return only valid JSON with no additional text." }
-          ],
-          temperature: 0.7,
-          max_tokens: 1000
-        })
+      // Call OpenAI API
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [
+          { role: "system", content: "You are an expert outreach message writer." },
+          { role: "user", content: prompt }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+        max_tokens: 1000
       });
 
-      console.log('Mistral API response status:', mistralResponse.status);
-      
-      if (!mistralResponse.ok) {
-        const errorText = await mistralResponse.text();
-        console.log('Mistral API error details:', errorText);
-        throw new Error(`Mistral API error: ${mistralResponse.status} - ${errorText}`);
-      }
-
-      const mistralData = await mistralResponse.json();
-      const result = JSON.parse(mistralData.choices[0].message.content || '{}');
+      const result = JSON.parse(response.choices[0].message.content || '{}');
       
       // Validate the AI response structure
       const aiResponse = z.object({
