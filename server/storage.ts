@@ -179,16 +179,19 @@ export class MemStorage implements IStorage {
 
 export class DatabaseStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
+    if (!db) throw new Error('Database not available');
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
+    if (!db) throw new Error('Database not available');
     const [user] = await db.select().from(users).where(eq(users.username, username));
     return user || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
+    if (!db) throw new Error('Database not available');
     const [user] = await db
       .insert(users)
       .values(insertUser)
@@ -419,4 +422,5 @@ class HybridStorage implements IStorage {
   }
 }
 
-export const storage = new HybridStorage();
+// Use memory storage for now to ensure app runs smoothly
+export const storage = new MemStorage();
