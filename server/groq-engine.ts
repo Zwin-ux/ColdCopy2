@@ -53,6 +53,8 @@ export async function generatePersonalizedMessage(params: {
   });
 
   try {
+    console.log('Attempting Groq API call with prompt:', prompt.substring(0, 200) + '...');
+    
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         {
@@ -70,6 +72,7 @@ export async function generatePersonalizedMessage(params: {
       response_format: { type: "json_object" }
     });
 
+    console.log('Groq API response:', chatCompletion.choices[0]?.message?.content);
     const response = JSON.parse(chatCompletion.choices[0]?.message?.content || '{}');
     
     // Validate and format the response
@@ -89,8 +92,8 @@ export async function generatePersonalizedMessage(params: {
   } catch (error) {
     console.error('Groq API error:', error);
     
-    // Fallback to a well-crafted template if API fails
-    return generateFallbackMessage(params);
+    // Return error instead of fake fallback data
+    throw new Error(`AI generation failed: ${error.message}. Please check your API configuration.`);
   }
 }
 
