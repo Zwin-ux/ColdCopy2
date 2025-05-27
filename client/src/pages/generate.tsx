@@ -34,10 +34,53 @@ interface SubscriptionStatus {
   currentPeriodEnd: string | null;
 }
 
+// Helper functions for message analysis
+const getComplexityScore = (text: string): { score: number; label: string; color: string } => {
+  if (!text.trim()) return { score: 0, label: "Empty", color: "text-gray-400" };
+  
+  const words = text.trim().split(/\s+/).length;
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
+  const avgWordsPerSentence = sentences > 0 ? words / sentences : words;
+  const hasPersonalization = /\[|\{|specific|company|role|experience/i.test(text);
+  
+  let score = 0;
+  
+  // Length scoring
+  if (words >= 30 && words <= 100) score += 3;
+  else if (words >= 15 && words <= 150) score += 2;
+  else if (words >= 5) score += 1;
+  
+  // Sentence structure
+  if (avgWordsPerSentence >= 8 && avgWordsPerSentence <= 20) score += 2;
+  else if (avgWordsPerSentence >= 5) score += 1;
+  
+  // Personalization indicators
+  if (hasPersonalization) score += 2;
+  
+  // Professional tone indicators
+  if (/collaborate|discuss|connect|opportunity|experience|background/i.test(text)) score += 1;
+  
+  const maxScore = 8;
+  const percentage = (score / maxScore) * 100;
+  
+  if (percentage >= 75) return { score: percentage, label: "Excellent", color: "text-green-600" };
+  if (percentage >= 50) return { score: percentage, label: "Good", color: "text-blue-600" };
+  if (percentage >= 25) return { score: percentage, label: "Fair", color: "text-yellow-600" };
+  return { score: percentage, label: "Needs Work", color: "text-red-600" };
+};
+
+const getCharCountColor = (count: number, max: number): string => {
+  const percentage = (count / max) * 100;
+  if (percentage >= 90) return "text-red-600";
+  if (percentage >= 75) return "text-yellow-600";
+  return "text-gray-600";
+};
+
 export default function Generate() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [generatedMessage, setGeneratedMessage] = useState<GenerateMessageResponse | null>(null);
-  const [charCount, setCharCount] = useState(0);
+  const [bioCharCount, setBioCharCount] = useState(0);
+  const [messageCharCount, setMessageCharCount] = useState(0);
   const [lastError, setLastError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -186,15 +229,22 @@ export default function Generate() {
                                 {...field}
                                 onChange={(e) => {
                                   field.onChange(e);
-                                  setCharCount(e.target.value.length);
+                                  setBioCharCount(e.target.value.length);
                                 }}
                               />
                             </FormControl>
                             <div className="flex justify-between items-center">
                               <FormMessage />
-                              <span className="text-xs text-muted-foreground">
-                                {charCount}/500
-                              </span>
+                              <div className="flex items-center space-x-4 text-xs">
+                                <span className={getCharCountColor(bioCharCount, 500)}>
+                                  {bioCharCount}/500 chars
+                                </span>
+                                {bioCharCount > 0 && (
+                                  <span className={getComplexityScore(field.value || "").color}>
+                                    Quality: {getComplexityScore(field.value || "").label}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </FormItem>
                         )}
@@ -261,9 +311,38 @@ export default function Generate() {
                       {generatedMessage.message}
                     </p>
                   </div>
+                  
+                  {/* Message Analysis */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 p-3 bg-gray-50 rounded-lg">
+                    <div className="text-center">
+                      <div className="text-lg font-semibold text-gray-700">
+                        {generatedMessage.message.length}
+                      </div>
+                      <div className="text-xs text-gray-500">Characters</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-semibold text-gray-700">
+                        {generatedMessage.wordCount}
+                      </div>
+                      <div className="text-xs text-gray-500">Words</div>
+                    </div>
+                    <div className="text-center">
+                      <div className={`text-lg font-semibold ${getComplexityScore(generatedMessage.message).color}`}>
+                        {Math.round(getComplexityScore(generatedMessage.message).score)}%
+                      </div>
+                      <div className="text-xs text-gray-500">Quality Score</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-semibold text-blue-600">
+                        {generatedMessage.estimatedResponseRate}%
+                      </div>
+                      <div className="text-xs text-gray-500">Est. Response</div>
+                    </div>
+                  </div>
+                  
                   <div className="flex justify-between items-center">
-                    <div className="text-sm text-muted-foreground">
-                      {generatedMessage.wordCount} words
+                    <div className={`text-sm ${getComplexityScore(generatedMessage.message).color}`}>
+                      Message Quality: {getComplexityScore(generatedMessage.message).label}
                     </div>
                     <Button onClick={handleCopy} variant="outline">
                       <Copy className="w-4 h-4 mr-2" />
