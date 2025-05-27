@@ -1,4 +1,4 @@
-import { users, messages, type User, type InsertUser, type Message, type InsertMessage } from "@shared/schema";
+import { users, messages, type User, type InsertUser, type Message, type InsertMessage, type Plan } from "@shared/schema";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -7,6 +7,18 @@ export interface IStorage {
   createMessage(message: InsertMessage): Promise<Message>;
   getMessages(): Promise<Message[]>;
   getMessageById(id: number): Promise<Message | undefined>;
+  
+  // Subscription management
+  updateUserSubscription(userId: number, data: {
+    stripeCustomerId?: string;
+    stripeSubscriptionId?: string;
+    plan?: Plan;
+    subscriptionStatus?: string;
+    currentPeriodEnd?: Date;
+  }): Promise<User>;
+  incrementMessageUsage(userId: number): Promise<User>;
+  resetMonthlyUsage(userId: number): Promise<User>;
+  canUserGenerateMessage(userId: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -34,7 +46,18 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
-    const user: User = { ...insertUser, id };
+    const user: User = { 
+      ...insertUser, 
+      id,
+      email: null,
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+      plan: "free",
+      messagesUsedThisMonth: 0,
+      subscriptionStatus: "active",
+      currentPeriodEnd: null,
+      createdAt: new Date()
+    };
     this.users.set(id, user);
     return user;
   }
@@ -42,7 +65,13 @@ export class MemStorage implements IStorage {
   async createMessage(insertMessage: InsertMessage): Promise<Message> {
     const id = this.currentMessageId++;
     const message: Message = { 
-      ...insertMessage, 
+      ...insertMessage,
+      linkedinUrl: insertMessage.linkedinUrl || null,
+      bioText: insertMessage.bioText || null,
+      resumeContent: insertMessage.resumeContent || null,
+      personalizationScore: insertMessage.personalizationScore || null,
+      wordCount: insertMessage.wordCount || null,
+      estimatedResponseRate: insertMessage.estimatedResponseRate || null,
       id,
       createdAt: new Date()
     };
@@ -58,6 +87,70 @@ export class MemStorage implements IStorage {
 
   async getMessageById(id: number): Promise<Message | undefined> {
     return this.messages.get(id);
+  }
+
+  // Subscription management methods
+  async updateUserSubscription(userId: number, data: {
+    stripeCustomerId?: string;
+    stripeSubscriptionId?: string;
+    plan?: Plan;
+    subscriptionStatus?: string;
+    currentPeriodEnd?: Date;
+  }): Promise<User> {
+    const user = this.users.get(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const updatedUser: User = {
+      ...user,
+      ...data
+    };
+    
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+
+  async incrementMessageUsage(userId: number): Promise<User> {
+    const user = this.users.get(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const updatedUser: User = {
+      ...user,
+      messagesUsedThisMonth: user.messagesUsedThisMonth + 1
+    };
+    
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+
+  async resetMonthlyUsage(userId: number): Promise<User> {
+    const user = this.users.get(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const updatedUser: User = {
+      ...user,
+      messagesUsedThisMonth: 0
+    };
+    
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+
+  async canUserGenerateMessage(userId: number): Promise<boolean> {
+    const user = this.users.get(userId);
+    if (!user) {
+      return false;
+    }
+
+    const { SUBSCRIPTION_PLANS } = await import("@shared/schema");
+    const userPlan = SUBSCRIPTION_PLANS[user.plan as Plan];
+    
+    return user.messagesUsedThisMonth < userPlan.messagesPerMonth;
   }
 }
 

@@ -1,14 +1,29 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { generateMessageRequestSchema, insertMessageSchema } from "@shared/schema";
+import { generateMessageRequestSchema, insertMessageSchema, subscriptionSchema, SUBSCRIPTION_PLANS, type Plan } from "@shared/schema";
 import OpenAI from "openai";
 import multer from "multer";
+import Stripe from "stripe";
 import { z } from "zod";
 
 const openai = new OpenAI({ 
   apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || ""
 });
+
+// Initialize Stripe
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+}
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2023-10-16",
+});
+
+// Stripe Price IDs (these should be set in your Stripe dashboard)
+const STRIPE_PRICE_IDS = {
+  pro: process.env.STRIPE_PRO_PRICE_ID || 'price_pro_placeholder',
+  agency: process.env.STRIPE_AGENCY_PRICE_ID || 'price_agency_placeholder'
+};
 
 // Configure multer for file uploads
 const upload = multer({

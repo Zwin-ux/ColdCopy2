@@ -6,6 +6,14 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  email: text("email"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  plan: text("plan").notNull().default("free"), // 'free', 'pro', 'agency'
+  messagesUsedThisMonth: integer("messages_used_this_month").notNull().default(0),
+  subscriptionStatus: text("subscription_status").default("active"), // 'active', 'canceled', 'past_due'
+  currentPeriodEnd: timestamp("current_period_end"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const messages = pgTable("messages", {
@@ -39,8 +47,38 @@ export const generateMessageRequestSchema = z.object({
   resumeContent: z.string().optional(),
 });
 
+// Subscription plans configuration
+export const SUBSCRIPTION_PLANS = {
+  free: {
+    name: "Free",
+    price: 0,
+    messagesPerMonth: 10,
+    features: ["10 messages per month", "Basic templates", "LinkedIn analysis"]
+  },
+  pro: {
+    name: "Pro", 
+    price: 5,
+    messagesPerMonth: 150,
+    features: ["150 messages per month", "Advanced AI personalization", "Resume analysis", "Priority support"]
+  },
+  agency: {
+    name: "Agency",
+    price: 20, 
+    messagesPerMonth: 1000,
+    features: ["1,000 messages per month", "Team collaboration", "Advanced analytics", "Custom templates", "Dedicated support"]
+  }
+} as const;
+
+export type Plan = keyof typeof SUBSCRIPTION_PLANS;
+
+export const subscriptionSchema = z.object({
+  plan: z.enum(["free", "pro", "agency"]),
+  priceId: z.string().optional(),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
 export type GenerateMessageRequest = z.infer<typeof generateMessageRequestSchema>;
+export type SubscriptionData = z.infer<typeof subscriptionSchema>;
