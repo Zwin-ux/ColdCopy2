@@ -1,0 +1,75 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 210 11% 98%; /* #F8FAFC */
+  --foreground: 217 12% 16%; /* #1F2937 */
+  --muted: 210 6% 93%; /* #E5E7EB */
+  --muted-foreground: 217 9% 45%; /* #6B7280 */
+  --popover: 0 0% 100%; /* #FFFFFF */
+  --popover-foreground: 217 12% 16%; /* #1F2937 */
+  --card: 0 0% 100%; /* #FFFFFF */
+  --card-foreground: 217 12% 16%; /* #1F2937 */
+  --border: 210 6% 93%; /* #E5E7EB */
+  --input: 210 6% 93%; /* #E5E7EB */
+  --primary: 219 93% 16%; /* #0A1F44 */
+  --primary-foreground: 210 11% 98%; /* #F8FAFC */
+  --secondary: 217 91% 60%; /* #3B82F6 */
+  --secondary-foreground: 0 0% 100%; /* #FFFFFF */
+  --accent: 210 6% 93%; /* #E5E7EB */
+  --accent-foreground: 217 12% 16%; /* #1F2937 */
+  --destructive: 0 84% 60%; /* #EF4444 */
+  --destructive-foreground: 0 0% 100%; /* #FFFFFF */
+  --success: 142 71% 45%; /* #10B981 */
+  --warning: 38 92% 50%; /* #F59E0B */
+  --ring: 217 91% 60%; /* #3B82F6 */
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: 219 93% 16%; /* #0A1F44 */
+  --foreground: 210 11% 98%; /* #F8FAFC */
+  --muted: 217 12% 26%; /* #374151 */
+  --muted-foreground: 210 6% 73%; /* #9CA3AF */
+  --popover: 219 93% 16%; /* #0A1F44 */
+  --popover-foreground: 210 11% 98%; /* #F8FAFC */
+  --card: 219 93% 16%; /* #0A1F44 */
+  --card-foreground: 210 11% 98%; /* #F8FAFC */
+  --border: 217 12% 26%; /* #374151 */
+  --input: 217 12% 26%; /* #374151 */
+  --primary: 217 91% 60%; /* #3B82F6 */
+  --primary-foreground: 0 0% 100%; /* #FFFFFF */
+  --secondary: 219 93% 16%; /* #0A1F44 */
+  --secondary-foreground: 210 11% 98%; /* #F8FAFC */
+  --accent: 217 12% 26%; /* #374151 */
+  --accent-foreground: 210 11% 98%; /* #F8FAFC */
+  --destructive: 0 84% 60%; /* #EF4444 */
+  --destructive-foreground: 0 0% 100%; /* #FFFFFF */
+  --success: 142 71% 45%; /* #10B981 */
+  --warning: 38 92% 50%; /* #F59E0B */
+  --ring: 217 91% 60%; /* #3B82F6 */
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-inter antialiased bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer utilities {
+  .font-inter {
+    font-family: 'Inter', sans-serif;
+  }
+}
