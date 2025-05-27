@@ -47,6 +47,72 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Authentication routes
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const { username, email, password } = req.body;
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ error: "Username already exists" });
+      }
+
+      // Create new user
+      const newUser = await storage.createUser({
+        username,
+        email,
+        password, // In production, this should be hashed
+      });
+
+      // Log the user in
+      req.login(newUser, (err) => {
+        if (err) {
+          return res.status(500).json({ error: "Failed to log in after registration" });
+        }
+        res.json({ user: { id: newUser.id, username: newUser.username, email: newUser.email } });
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      const user = await storage.getUserByUsername(username);
+      if (!user || user.password !== password) { // In production, use proper password hashing
+        return res.status(401).json({ error: "Invalid username or password" });
+      }
+
+      req.login(user, (err) => {
+        if (err) {
+          return res.status(500).json({ error: "Failed to log in" });
+        }
+        res.json({ user: { id: user.id, username: user.username, email: user.email } });
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    req.logout((err) => {
+      if (err) {
+        return res.status(500).json({ error: "Failed to log out" });
+      }
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+
+  app.get("/api/auth/me", (req, res) => {
+    if (req.isAuthenticated()) {
+      res.json({ user: { id: req.user.id, username: req.user.username, email: req.user.email } });
+    } else {
+      res.status(401).json({ error: "Not authenticated" });
+    }
+  });
   // Generate personalized outreach message with usage tracking
   app.post("/api/generate-message", upload.single('resume'), async (req, res) => {
     try {

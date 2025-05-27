@@ -12,6 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { FileUpload } from "@/components/file-upload";
+import { OrigamiError } from "@/components/origami-error";
 import { generateMessage, copyToClipboard, type GenerateMessageResponse } from "@/lib/api";
 import mascotImage from "@assets/ChatGPT Image May 26, 2025, 07_58_42 PM.png";
 
