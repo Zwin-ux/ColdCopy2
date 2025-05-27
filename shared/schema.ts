@@ -47,6 +47,11 @@ export const generateMessageRequestSchema = z.object({
   linkedinUrl: z.string().url().optional(),
   bioText: z.string().max(500).optional(),
   resumeContent: z.string().optional(),
+  // User's own information to prevent AI hallucination
+  senderName: z.string().min(2).max(50).optional(),
+  senderCompany: z.string().max(100).optional(),
+  senderRole: z.string().max(100).optional(),
+  purpose: z.string().max(200).optional(),
 });
 
 // Subscription plans configuration

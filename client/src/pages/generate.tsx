@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Link2, Brain, Copy, Users, Zap, Crown, Star, MessageSquare } from "lucide-react";
+import { Link2, Brain, Copy, Users, Zap, Crown, Star, MessageSquare, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +21,11 @@ import { AppLayout } from "@/components/app-layout";
 const formSchema = z.object({
   linkedinUrl: z.string().url("Please enter a valid LinkedIn URL").optional().or(z.literal("")),
   bioText: z.string().max(500, "Bio text must be 500 characters or less").optional(),
+  // Your information to prevent AI hallucination
+  senderName: z.string().min(1, "Please enter your name").max(50),
+  senderCompany: z.string().max(100).optional(),
+  senderRole: z.string().max(100).optional(),
+  purpose: z.string().max(200).optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -166,6 +171,10 @@ export default function Generate() {
       linkedinUrl: data.linkedinUrl,
       bioText: data.bioText,
       resume: selectedFile || undefined,
+      senderName: data.senderName,
+      senderCompany: data.senderCompany,
+      senderRole: data.senderRole,
+      purpose: data.purpose,
     };
 
     generateMutation.mutate(requestData);
@@ -309,6 +318,85 @@ export default function Generate() {
                           </FormItem>
                         )}
                       />
+                    </div>
+
+                    {/* Your Information Section - Prevents AI Hallucination */}
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2 pb-2 border-b">
+                        <User className="w-4 h-4 text-primary" />
+                        <h3 className="font-semibold text-gray-900">Your Information</h3>
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">Prevents AI errors</span>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="senderName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Your Name *</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="John Smith"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="senderCompany"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Your Company</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="TechCorp Inc."
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="senderRole"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Your Role</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="Software Engineer"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="purpose"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Message Purpose</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="Networking, collaboration, etc."
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                     </div>
 
                     {/* Smart LinkedIn Detection Panel */}
