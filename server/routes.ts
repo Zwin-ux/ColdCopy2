@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import passport from "passport";
 import { storage } from "./storage";
 import { generateMessageRequestSchema, insertMessageSchema, subscriptionSchema, SUBSCRIPTION_PLANS, type Plan } from "@shared/schema";
 import { generatePersonalizedMessage } from "./groq-engine";
@@ -45,6 +46,30 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Google OAuth routes
+  app.get("/api/auth/google", 
+    passport.authenticate("google", { scope: ["profile", "email"] })
+  );
+
+  app.get("/api/auth/google/callback", 
+    passport.authenticate("google", { failureRedirect: "/auth" }),
+    (req, res) => {
+      res.redirect("/"); // Redirect to home page after successful login
+    }
+  );
+
+  // Apple OAuth routes
+  app.get("/api/auth/apple", 
+    passport.authenticate("apple")
+  );
+
+  app.get("/api/auth/apple/callback", 
+    passport.authenticate("apple", { failureRedirect: "/auth" }),
+    (req, res) => {
+      res.redirect("/"); // Redirect to home page after successful login
+    }
+  );
+
   // Authentication routes
   app.post("/api/auth/register", async (req, res) => {
     try {

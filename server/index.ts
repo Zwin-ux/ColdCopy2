@@ -2,6 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import { Strategy as AppleStrategy } from "passport-apple";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
@@ -25,7 +27,7 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Passport strategy
+// Local strategy
 passport.use(new LocalStrategy(
   { usernameField: 'username' },
   async (username: string, password: string, done) => {
@@ -46,6 +48,67 @@ passport.use(new LocalStrategy(
     }
   }
 ));
+
+// Google OAuth strategy
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: "/api/auth/google/callback"
+  },
+  async (accessToken, refreshToken, profile, done) => {
+    try {
+      // Check if user exists
+      let user = await storage.getUserByEmail(profile.emails?.[0]?.value);
+      
+      if (!user) {
+        // Create new user from Google profile
+        user = await storage.createUser({
+          username: profile.displayName || profile.id,
+          email: profile.emails?.[0]?.value || '',
+          password: '', // OAuth users don't need passwords
+          googleId: profile.id,
+          profileImage: profile.photos?.[0]?.value
+        });
+      }
+      
+      return done(null, user);
+    } catch (error) {
+      return done(error);
+    }
+  }));
+}
+
+// Apple OAuth strategy
+if (process.env.APPLE_CLIENT_ID && process.env.APPLE_TEAM_ID && process.env.APPLE_KEY_ID) {
+  passport.use(new AppleStrategy({
+    clientID: process.env.APPLE_CLIENT_ID,
+    teamID: process.env.APPLE_TEAM_ID,
+    keyID: process.env.APPLE_KEY_ID,
+    privateKeyString: process.env.APPLE_PRIVATE_KEY,
+    callbackURL: "/api/auth/apple/callback"
+  },
+  async (accessToken, refreshToken, idToken, profile, done) => {
+    try {
+      // Check if user exists
+      let user = await storage.getUserByEmail(profile.email);
+      
+      if (!user) {
+        // Create new user from Apple profile
+        user = await storage.createUser({
+          username: profile.name?.firstName + ' ' + profile.name?.lastName || profile.sub,
+          email: profile.email || '',
+          password: '', // OAuth users don't need passwords
+          appleId: profile.sub
+        });
+      }
+      
+      return done(null, user);
+    } catch (error) {
+      return done(error);
+    }
+  }));
+}
 
 passport.serializeUser((user: any, done) => {
   done(null, user.id);
