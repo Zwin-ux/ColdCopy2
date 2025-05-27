@@ -1,4 +1,4 @@
-import { users, messages, type User, type InsertUser, type Message, type InsertMessage, type Plan, SUBSCRIPTION_PLANS } from "@shared/schema";
+import { users, messages, ipUsageTracking, type User, type InsertUser, type Message, type InsertMessage, type Plan, SUBSCRIPTION_PLANS } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql } from "drizzle-orm";
 
@@ -7,7 +7,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  createMessage(message: InsertMessage): Promise<Message>;
+  createMessage(message: InsertMessage & { userId?: number; ipAddress?: string }): Promise<Message>;
   getMessages(): Promise<Message[]>;
   getMessageById(id: number): Promise<Message | undefined>;
   
@@ -22,11 +22,22 @@ export interface IStorage {
   incrementMessageUsage(userId: number): Promise<User>;
   resetMonthlyUsage(userId: number): Promise<User>;
   canUserGenerateMessage(userId: number): Promise<boolean>;
+  
+  // IP-based trial tracking for anonymous users
+  getIpUsage(ipAddress: string): Promise<{ messagesUsed: number; canGenerate: boolean }>;
+  incrementIpUsage(ipAddress: string): Promise<void>;
+  checkTrialEligibility(userId?: number, ipAddress?: string): Promise<{
+    canGenerate: boolean;
+    messagesUsed: number;
+    requiresLogin: boolean;
+    requiresUpgrade: boolean;
+  }>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private messages: Map<number, Message>;
+  private ipTracking: Map<string, { messagesUsed: number; lastResetDate: Date }>;
   private currentUserId: number;
   private currentMessageId: number;
 

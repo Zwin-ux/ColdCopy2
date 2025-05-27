@@ -25,6 +25,17 @@ export const messages = pgTable("messages", {
   personalizationScore: integer("personalization_score"),
   wordCount: integer("word_count"),
   estimatedResponseRate: integer("estimated_response_rate"),
+  userId: integer("user_id"), // Nullable for anonymous users
+  ipAddress: text("ip_address"), // Track IP for abuse prevention
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// IP-based usage tracking for anonymous users
+export const ipUsageTracking = pgTable("ip_usage_tracking", {
+  id: serial("id").primaryKey(),
+  ipAddress: text("ip_address").notNull().unique(),
+  messagesUsed: integer("messages_used").notNull().default(0),
+  lastResetDate: timestamp("last_reset_date").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -50,11 +61,11 @@ export const generateMessageRequestSchema = z.object({
 
 // Subscription plans configuration
 export const SUBSCRIPTION_PLANS = {
-  free: {
-    name: "Free",
+  trial: {
+    name: "Free Trial",
     price: 0,
-    messagesPerMonth: 10,
-    features: ["10 messages per month", "Basic templates", "LinkedIn analysis"]
+    messagesPerMonth: 2, // 1 anonymous + 1 after login
+    features: ["2 free messages to try", "Experience full AI personalization", "No credit card required"]
   },
   pro: {
     name: "Pro", 
@@ -73,7 +84,7 @@ export const SUBSCRIPTION_PLANS = {
 export type Plan = keyof typeof SUBSCRIPTION_PLANS;
 
 export const subscriptionSchema = z.object({
-  plan: z.enum(["free", "pro", "agency"]),
+  plan: z.enum(["trial", "pro", "agency"]),
   priceId: z.string().optional(),
 });
 
