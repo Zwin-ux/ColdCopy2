@@ -26,8 +26,11 @@ export async function generateMessage(data: {
   if (data.resume) {
     formData.append('resume', data.resume);
   }
+  
+  // Add default style if not provided
+  formData.append('style', 'professional');
 
-  const response = await fetch('/api/generate-message', {
+  const response = await fetch('/api/messages/generate', {
     method: 'POST',
     body: formData,
     credentials: 'include',

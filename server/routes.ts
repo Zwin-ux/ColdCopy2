@@ -168,12 +168,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
+      const userPlan = (user.plan || "trial") as keyof typeof SUBSCRIPTION_PLANS;
       const subscription = {
         plan: user.plan || "trial",
         subscriptionStatus: user.subscriptionStatus || "active",
-        messagesUsed: user.messagesUsed || 0,
-        messagesLimit: SUBSCRIPTION_PLANS[user.plan || "trial"].messagesPerMonth,
-        messagesRemaining: Math.max(0, SUBSCRIPTION_PLANS[user.plan || "trial"].messagesPerMonth - (user.messagesUsed || 0)),
+        messagesUsed: user.messagesUsedThisMonth || 0,
+        messagesLimit: SUBSCRIPTION_PLANS[userPlan].messagesPerMonth,
+        messagesRemaining: Math.max(0, SUBSCRIPTION_PLANS[userPlan].messagesPerMonth - (user.messagesUsedThisMonth || 0)),
         currentPeriodEnd: user.currentPeriodEnd || null
       };
 
