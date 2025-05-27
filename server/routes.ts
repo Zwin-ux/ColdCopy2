@@ -191,14 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(401).json({ message: "User not found" });
         }
 
-        // PAYWALL TEMPORARILY DISABLED FOR DEBUGGING
-        // const canGenerate = await storage.canUserGenerateMessage(user.id);
-        // if (!canGenerate) {
-        //   return res.status(403).json({ 
-        //     message: "You've reached your message limit for this month. Upgrade to Pro for unlimited messages!",
-        //     redirectTo: "/pricing"
-        //   });
-        // }
+        // Free message generation for all users
 
         // Smart LinkedIn profile detection and enhancement
         let enhancedBioText = bioText;
@@ -262,15 +255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           messagesRemaining: userPlan.messagesPerMonth - updatedUser!.messagesUsedThisMonth
         });
       } else {
-        // Anonymous user flow
-        const anonymousMessagesUsed = req.session?.anonymousMessagesUsed || 0;
-        
-        if (anonymousMessagesUsed >= 1) {
-          return res.status(403).json({ 
-            message: "You've used your free message! Please create an account to generate another message for free.",
-            requiresLogin: true
-          });
-        }
+        // Anonymous user flow - unlimited access for demo
 
         const result = await generatePersonalizedMessage({
           linkedinUrl,
