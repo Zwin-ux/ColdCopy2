@@ -134,7 +134,27 @@ export default function Auth() {
               <Button 
                 variant="outline" 
                 className="w-full flex items-center justify-center gap-3 h-11"
-                onClick={() => window.location.href = '/api/auth/google'}
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/auth/google');
+                    if (!response.ok) {
+                      const data = await response.json();
+                      toast({
+                        title: "Google Sign-In",
+                        description: "Google sign-in will be available soon. Please use email registration for now.",
+                        variant: "default",
+                      });
+                    } else {
+                      window.location.href = '/api/auth/google';
+                    }
+                  } catch (error) {
+                    toast({
+                      title: "Google Sign-In",
+                      description: "Google sign-in will be available soon. Please use email registration for now.",
+                      variant: "default",
+                    });
+                  }
+                }}
               >
                 <SiGoogle className="w-5 h-5 text-red-500" />
                 Continue with Google
@@ -143,7 +163,27 @@ export default function Auth() {
               <Button 
                 variant="outline" 
                 className="w-full flex items-center justify-center gap-3 h-11"
-                onClick={() => window.location.href = '/api/auth/apple'}
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/auth/apple');
+                    if (!response.ok) {
+                      const data = await response.json();
+                      toast({
+                        title: "Apple Sign-In",
+                        description: "Apple sign-in will be available soon. Please use email registration for now.",
+                        variant: "default",
+                      });
+                    } else {
+                      window.location.href = '/api/auth/apple';
+                    }
+                  } catch (error) {
+                    toast({
+                      title: "Apple Sign-In",
+                      description: "Apple sign-in will be available soon. Please use email registration for now.",
+                      variant: "default",
+                    });
+                  }
+                }}
               >
                 <SiApple className="w-5 h-5 text-gray-900" />
                 Continue with Apple

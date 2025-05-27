@@ -46,29 +46,18 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Google OAuth routes
-  app.get("/api/auth/google", 
-    passport.authenticate("google", { scope: ["profile", "email"] })
-  );
+  // OAuth placeholder routes (requires setup of OAuth credentials)
+  app.get("/api/auth/google", (req, res) => {
+    res.status(501).json({ 
+      message: "Google OAuth requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables. Please contact support to enable social login." 
+    });
+  });
 
-  app.get("/api/auth/google/callback", 
-    passport.authenticate("google", { failureRedirect: "/auth" }),
-    (req, res) => {
-      res.redirect("/"); // Redirect to home page after successful login
-    }
-  );
-
-  // Apple OAuth routes
-  app.get("/api/auth/apple", 
-    passport.authenticate("apple")
-  );
-
-  app.get("/api/auth/apple/callback", 
-    passport.authenticate("apple", { failureRedirect: "/auth" }),
-    (req, res) => {
-      res.redirect("/"); // Redirect to home page after successful login
-    }
-  );
+  app.get("/api/auth/apple", (req, res) => {
+    res.status(501).json({ 
+      message: "Apple OAuth requires Apple Developer credentials. Please contact support to enable social login." 
+    });
+  });
 
   // Authentication routes
   app.post("/api/auth/register", async (req, res) => {
