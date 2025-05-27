@@ -1,15 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { 
-  TrendingUp, 
   MessageSquare, 
-  Users, 
   Crown, 
-  Zap, 
   ArrowRight,
-  BarChart3,
-  Calendar,
-  Target,
   Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -64,9 +58,9 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Link href="/generate">
+        {/* Quick Actions - Only Working Routes */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Link href="/">
             <Card className="cursor-pointer hover:shadow-md transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-center space-x-4">
@@ -76,7 +70,7 @@ export default function Dashboard() {
                   <div>
                     <h3 className="font-semibold">Generate Message</h3>
                     <p className="text-sm text-muted-foreground">
-                      Create AI-powered outreach
+                      Create personalized outreach
                     </p>
                   </div>
                   <ArrowRight className="w-4 h-4 text-muted-foreground ml-auto" />
@@ -93,28 +87,9 @@ export default function Dashboard() {
                     <Crown className="w-6 h-6 text-yellow-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold">Upgrade Plan</h3>
+                    <h3 className="font-semibold">View Plans</h3>
                     <p className="text-sm text-muted-foreground">
-                      Unlock unlimited messages
-                    </p>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground ml-auto" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/help">
-            <Card className="cursor-pointer hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-4">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Target className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">Learn Tips</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Improve response rates
+                      $5/mo for 500 messages
                     </p>
                   </div>
                   <ArrowRight className="w-4 h-4 text-muted-foreground ml-auto" />
@@ -124,8 +99,8 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Stats Overview - Only Real Data */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Messages Used</CardTitle>
@@ -151,33 +126,7 @@ export default function Dashboard() {
                 {subscription?.plan || "Trial"}
               </div>
               <p className="text-xs text-muted-foreground">
-                {subscription?.plan === "pro" ? "Unlimited messages" : "Limited access"}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">85%</div>
-              <p className="text-xs text-muted-foreground">
-                avg personalization score
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Response Rate</CardTitle>
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">60%</div>
-              <p className="text-xs text-muted-foreground">
-                estimated response rate
+                {subscription?.messagesRemaining || 0} messages remaining
               </p>
             </CardContent>
           </Card>
@@ -245,52 +194,19 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {/* Getting Started Guide */}
+        {/* Simple CTA */}
         <Card>
-          <CardHeader>
-            <CardTitle>Getting Started with ColdCopy</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center space-y-2">
-                <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                  <span className="text-primary font-bold">1</span>
-                </div>
-                <h4 className="font-medium">Add LinkedIn Profile</h4>
-                <p className="text-sm text-muted-foreground">
-                  Paste a LinkedIn URL or bio text to analyze
-                </p>
-              </div>
-              
-              <div className="text-center space-y-2">
-                <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                  <span className="text-primary font-bold">2</span>
-                </div>
-                <h4 className="font-medium">AI Personalization</h4>
-                <p className="text-sm text-muted-foreground">
-                  Our AI creates personalized outreach messages
-                </p>
-              </div>
-              
-              <div className="text-center space-y-2">
-                <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                  <span className="text-primary font-bold">3</span>
-                </div>
-                <h4 className="font-medium">Get Responses</h4>
-                <p className="text-sm text-muted-foreground">
-                  Send and watch your response rates soar
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex justify-center pt-4">
-              <Link href="/generate">
-                <Button size="lg">
-                  <Zap className="w-4 h-4 mr-2" />
-                  Create Your First Message
-                </Button>
-              </Link>
-            </div>
+          <CardContent className="p-8 text-center">
+            <h3 className="text-xl font-semibold mb-4">Ready to create your message?</h3>
+            <p className="text-muted-foreground mb-6">
+              Add a LinkedIn profile or bio text to get started
+            </p>
+            <Link href="/">
+              <Button size="lg">
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Create Message
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       </div>
