@@ -86,16 +86,23 @@ export async function generatePersonalizedMessage(params: {
     // Validate and format the response
     let message = response.message || "Hi there,\n\nI'd love to connect and learn more about your experience.\n\nBest regards,\n[Your Name]";
     
-    // Post-process to remove fake names and ensure data integrity
+    // Production-ready anti-hallucination system for authentic personalization
     const commonFakeNames = ['Alex', 'Sarah', 'John', 'Michael', 'Rachel', 'David', 'Lisa', 'Jennifer', 'Elon', 'Guillermo', 'Maria', 'Carlos', 'Ana', 'James', 'Emily', 'Robert', 'Jessica', 'Chris', 'Amanda', 'Matthew', 'Ashley', 'Daniel', 'Nicole', 'Andrew', 'Elizabeth', 'Ryan', 'Samantha', 'Kevin', 'Lauren', 'Brian', 'Stephanie', 'Amith', 'Kumar', 'Priya', 'Raj', 'Anita', 'Vikram', 'Sanya', 'Arjun', 'Neha', 'Rohan'];
     
+    // Remove any fake names the AI might have generated
     for (const fakeName of commonFakeNames) {
       const fakeGreeting = `Hi ${fakeName},`;
       if (message.startsWith(fakeGreeting)) {
         message = message.replace(fakeGreeting, 'Hi there,');
-        console.log(`🛡️ Anti-hallucination filter activated: Removed fake name "${fakeName}"`);
+        console.log(`🛡️ Data integrity maintained: Replaced fabricated name with authentic greeting`);
         break;
       }
+    }
+    
+    // Replace placeholder names with professional greeting
+    if (message.startsWith('Hi [Name],')) {
+      message = message.replace('Hi [Name],', 'Hi there,');
+      console.log(`🛡️ Production greeting applied: Replaced placeholder with authentic salutation`);
     }
     
     const personalizationScore = Math.min(100, Math.max(60, response.personalizationScore || 75));
@@ -162,16 +169,13 @@ function createPersonalizationPrompt(params: {
   const templateGuidance = getTemplateGuidance(templateId || 'professional_intro');
   prompt += `\nMessage Style: ${templateGuidance}\n`;
 
-  prompt += `\nABSOLUTE CRITICAL REQUIREMENTS - NO EXCEPTIONS:
-1. NEVER EVER invent recipient names like "Alex", "Sarah", "John", "Guillermo", "Rachel" - STRICTLY FORBIDDEN
-2. MUST start with "Hi there" or "Hello" - NEVER use made-up names
-3. From sender info - Your name: ${params.senderName || "[Your Name]"}
-4. From sender info - Your company: ${params.senderCompany || "[Your Company]"}  
-5. From sender info - Your role: ${params.senderRole || "[Your Role]"}
-6. Reference ONLY actual information from bio text - no fabricated details
-7. Professional but conversational (100-150 words)
-8. Include clear but soft call to action
-9. ANY NAME INVENTION = COMPLETE SYSTEM FAILURE
+  prompt += `\nPRODUCTION REQUIREMENTS FOR AUTHENTIC PERSONALIZATION:
+1. GREETING: Always start with "Hi there," - NEVER invent recipient names
+2. SENDER INFO: Your name: ${params.senderName || "[Your Name]"}, Company: ${params.senderCompany || "[Your Company]"}, Role: ${params.senderRole || "[Your Role]"}
+3. DATA INTEGRITY: Use ONLY real information from the provided bio - no fabricated details
+4. TONE: Professional yet conversational (100-150 words)
+5. CALL TO ACTION: Include clear but soft invitation to connect
+6. AUTHENTICITY: Build credibility through genuine interest in their actual work
 
 Return JSON with:
 {
