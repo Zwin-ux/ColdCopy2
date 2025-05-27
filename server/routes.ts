@@ -18,10 +18,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2025-04-30.basil",
 });
 
-// Stripe Price IDs (these should be set in your Stripe dashboard)
+// Stripe Price IDs - will be configured in production
 const STRIPE_PRICE_IDS = {
-  pro: process.env.STRIPE_PRO_PRICE_ID || 'price_pro_placeholder',
-  agency: process.env.STRIPE_AGENCY_PRICE_ID || 'price_agency_placeholder'
+  pro: process.env.STRIPE_PRO_PRICE_ID,
+  agency: process.env.STRIPE_AGENCY_PRICE_ID
 };
 
 // Configure multer for file uploads
