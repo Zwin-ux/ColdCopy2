@@ -4,14 +4,17 @@ import session from "express-session";
 import bcrypt from "bcrypt";
 import Stripe from "stripe";
 import { storage } from "./storage";
-import { generatePersonalizedMessage } from "./groq-engine";
+import { GroqClient } from "./groq-client";
 import { scrapeLinkedInProfile, generateEnhancedBio } from "./linkedin-scraper";
 import { insertUserSchema, insertMessageSchema, SUBSCRIPTION_PLANS } from "@shared/schema";
 import { sendWelcomeEmail, sendLoginNotification } from "./email-service";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2023-10-16",
+  apiVersion: "2024-06-20",
 });
+
+// Initialize simplified Groq client
+const groqClient = new GroqClient(process.env.GROQ_API_KEY || '');
 
 declare module "express-session" {
   interface SessionData {
@@ -220,10 +223,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        const result = await generatePersonalizedMessage({
+        const result = await groqClient.generateEmail({
           linkedinUrl,
           bioText: enhancedBioText,
-          templateId: style || 'professional',
+          templateType: 'professional_intro',
           resume: resume || undefined,
           recipientName: extractedProfileData?.name,
           recipientCompany: extractedProfileData?.company,
@@ -257,10 +260,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // Anonymous user flow - unlimited access for demo
 
-        const result = await generatePersonalizedMessage({
+        const result = await groqClient.generateEmail({
           linkedinUrl,
           bioText,
-          templateId: style || "professional",
+          templateType: 'professional_intro',
           resume: resume || undefined,
           senderName: req.body.senderName,
           senderCompany: req.body.senderCompany,
@@ -268,18 +271,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           purpose: req.body.purpose
         });
 
-        await storage.createMessage({
-          generatedMessage: result.message,
-          linkedinUrl,
-          bioText,
-          resumeContent: resume || undefined,
-          personalizationScore: result.personalizationScore,
-          wordCount: result.wordCount,
-          estimatedResponseRate: result.estimatedResponseRate
-        });
-
-        // No session tracking needed for unlimited demo access
-
+        // No message storage needed for demo users - unlimited access
+        
         res.json({
           ...result,
           messagesUsed: 0,
